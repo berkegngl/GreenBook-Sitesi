@@ -1,0 +1,54 @@
+// src/services/bookService.js
+const BASE_URL = 'https://greenbooksapi-production.up.railway.app/api';
+
+export async function fetchBestsellers() {
+  console.log('[BOOK][REQUEST] /Books/bestsellers');
+  const response = await fetch(`${BASE_URL}/Books/bestsellers`);
+  const data = await response.json();
+  console.log('[BOOK][RESPONSE] /Books/bestsellers', data);
+  if (!response.ok) {
+    throw new Error('Çok satanlar alınamadı');
+  }
+  return data;
+}
+
+export async function fetchDiscountedBooks() {
+  console.log('[BOOK][REQUEST] /Books/discounted');
+  const response = await fetch(`${BASE_URL}/Books/discounted`);
+  const data = await response.json();
+  console.log('[BOOK][RESPONSE] /Books/discounted', data);
+  if (!response.ok) {
+    throw new Error('Kampanyalı kitaplar alınamadı');
+  }
+  return data;
+}
+
+export async function fetchBooksByFilter({ category, subcategory, author, publisher }) {
+  const params = new URLSearchParams();
+  if (category) params.append('category', category);
+  if (subcategory) params.append('subcategory', subcategory);
+  if (author) params.append('author', author);
+  if (publisher) params.append('publisher', publisher);
+  const url = `${BASE_URL}/Books/filter?${params.toString()}`;
+  console.log('[BOOK][REQUEST] /Books/filter', { category, subcategory, author, publisher });
+  const response = await fetch(url);
+  const data = await response.json();
+  console.log('[BOOK][RESPONSE] /Books/filter', data);
+  if (!response.ok) {
+    throw new Error('Filtreli kitaplar alınamadı');
+  }
+  return data;
+}
+
+export async function fetchBooksBySearch(query) {
+  console.log('[BOOK][REQUEST] /Books/search', { query });
+  const response = await fetch(`${BASE_URL}/Books/search?query=${encodeURIComponent(query)}`);
+  const data = await response.json();
+  console.log('[BOOK][RESPONSE] /Books/search', data);
+  if (!response.ok) {
+    throw new Error('Arama sonuçları alınamadı');
+  }
+  return data;
+}
+
+ 

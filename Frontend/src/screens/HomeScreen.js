@@ -1,18 +1,37 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import BannerSlider from '../components/BannerSlider';
 import BookSection from '../components/BookSection';
+import { fetchBestsellers, fetchDiscountedBooks } from '../services/bookService';
 
-export default function HomeScreen({ books, onAddToCart, onToggleFavorite, favorites }) {
-  // Dummy: En çok satanlar ve yeni çıkanlar (rastgele kitaplar)
-  const bestSellers = books.slice(0, 10);
-  const newReleases = books.slice().sort(() => 0.5 - Math.random()).slice(0, 5);
+export default function HomeScreen({ books, onAddToCart, onToggleFavorite, favorites, onShowAllBooks }) {
+  const [bestsellers, setBestsellers] = useState([]);
+  const [discounted, setDiscounted] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      fetchBestsellers(),
+      fetchDiscountedBooks()
+    ])
+      .then(([bestsellerData, discountedData]) => {
+        setBestsellers(bestsellerData);
+        setDiscounted(discountedData);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError('Veriler yüklenemedi');
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <div className="container">
       <BannerSlider />
       <BookSection 
         title="Kampanyalar" 
-        books={books.slice(0, 10)} 
+        books={discounted} 
         onAddToCart={onAddToCart} 
         onToggleFavorite={onToggleFavorite}
         favorites={favorites}
@@ -21,7 +40,7 @@ export default function HomeScreen({ books, onAddToCart, onToggleFavorite, favor
       />
       <BookSection 
         title="Çok Satanlar" 
-        books={books.slice(10, 20)} 
+        books={bestsellers} 
         onAddToCart={onAddToCart} 
         onToggleFavorite={onToggleFavorite}
         favorites={favorites}
@@ -52,11 +71,13 @@ export default function HomeScreen({ books, onAddToCart, onToggleFavorite, favor
             boxShadow: '0 2px 8px rgba(26,127,55,0.10)',
             transition: 'background 0.2s',
           }}
-          onClick={() => window.location.href = '/books'}
+          onClick={onShowAllBooks}
         >
           Tüm ürünlere göz atın
         </button>
       </div>
+      {loading && <div>Veriler yükleniyor...</div>}
+      {error && <div style={{color:'red'}}>{error}</div>}
     </div>
   );
 } 

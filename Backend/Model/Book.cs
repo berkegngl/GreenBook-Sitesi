@@ -11,6 +11,6 @@ public class Book
     public string Category { get; set; }
     public string Subcategory { get; set; }
     public string Publisher { get; set; }
-    public int DiscountRate { get; set; }
+    public int Discount_Rate { get; set; }
     public int Bestseller { get; set; }
 }

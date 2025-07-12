@@ -11,5 +11,11 @@ namespace GreenBooksAPI.Services
 
         Task<IEnumerable<Book>> GetDiscountedBooksAsync();
 
+        Task<IEnumerable<Book>> GetAllBooksAsync();
+
+        Task<IEnumerable<Book>> FilterBooksAsync(string? category, string? subcategory, string? author, string? publisher);
+
+        Task<IEnumerable<Book>> SearchBooksAsync(string query);
+
     }
 }

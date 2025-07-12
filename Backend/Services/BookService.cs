@@ -51,5 +51,67 @@ namespace GreenBooksAPI.Services
             return books;
         }
 
+        public async Task<IEnumerable<Book>> GetAllBooksAsync()
+        {
+
+            var sql = " SELECT * FROM books";
+
+            using var conn = _context.CreateConnection();
+            var books = await conn.QueryAsync<Book>(sql);
+
+            return books;
+
+
+
+        }
+
+
+        public async Task<IEnumerable<Book>> FilterBooksAsync(string? category, string? subcategory, string? author, string? publisher)
+        {
+            var sql = "SELECT * FROM books WHERE 1=1";
+            var parameters = new DynamicParameters();
+
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                sql += " AND category = @category";
+                parameters.Add("category", category);
+            }
+
+            if (!string.IsNullOrWhiteSpace(subcategory))
+            {
+                sql += " AND subcategory = @subcategory";
+                parameters.Add("subcategory", subcategory);
+            }
+
+            if (!string.IsNullOrWhiteSpace(author))
+            {
+                sql += " AND author = @author";
+                parameters.Add("author", author);
+            }
+
+            if (!string.IsNullOrWhiteSpace(publisher))
+            {
+                sql += " AND publisher = @publisher";
+                parameters.Add("publisher", publisher);
+            }
+
+            using var conn = _context.CreateConnection();
+            return await conn.QueryAsync<Book>(sql, parameters);
+        }
+
+        public async Task<IEnumerable<Book>> SearchBooksAsync(string query)
+        {
+            var sql = @"
+        SELECT * FROM books
+        WHERE LOWER(title) LIKE LOWER(@query)
+           OR LOWER(author) LIKE LOWER(@query)
+           OR LOWER(publisher) LIKE LOWER(@query)";
+
+            using var conn = _context.CreateConnection();
+            return await conn.QueryAsync<Book>(sql, new { query = $"%{query}%" });
+        }
+
+
+
     }
 }

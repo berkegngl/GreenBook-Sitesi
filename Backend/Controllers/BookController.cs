@@ -42,5 +42,33 @@ namespace GreenBooksAPI.Controllers
             return Ok(books);
         }
 
+        [HttpGet("AllBooks")]
+        public async Task<IActionResult> GetAllBooksAsync()
+        {
+            var books = await _bookService.GetAllBooksAsync();
+            return Ok(books);
+        }
+
+        [HttpGet("filter")]
+        public async Task<IActionResult> FilterBooks(
+    [FromQuery] string? category,
+    [FromQuery] string? subcategory,
+    [FromQuery] string? author,
+    [FromQuery] string? publisher)
+        {
+            var books = await _bookService.FilterBooksAsync(category, subcategory, author, publisher);
+            return Ok(books);
+        }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchBooks([FromQuery] string query)
+        {
+            var result = await _bookService.SearchBooksAsync(query);
+            return Ok(result);
+        }
+
+
+
+
     }
 }

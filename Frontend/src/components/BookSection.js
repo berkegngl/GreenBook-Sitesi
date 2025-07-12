@@ -41,26 +41,31 @@ export default function BookSection({ title, books, onAddToCart, onToggleFavorit
           }}
         >
           {books.map(book => {
-            const discount = book.discount || Math.floor(Math.random() * 30) + 10;
-            book.discount = discount;
-            const originalPrice = book.originalPrice || Math.floor(book.price * (100 / (100 - discount)));
-            book.originalPrice = originalPrice;
+            // Sadece discount_Rate alanını kullan
+            const discount = book.discount_Rate || 0;
+            const hasDiscount = typeof discount === 'number' && discount > 0;
+            // Gelen price normal fiyat, indirimli fiyatı hesapla
+            let originalPrice = book.price;
+            let discountedPrice = book.price;
+            if (hasDiscount) {
+              discountedPrice = Math.round(book.price * (1 - discount / 100));
+            }
             return (
               <SwiperSlide key={book.id}>
-                <div className="book-card">
-                  {showDiscountBadge && discount > 0 && (
-                    <div className="discount-badge">%{discount}</div>
+                <div className="book-card" style={{position:'relative'}}>
+                  {showDiscountBadge && hasDiscount && (
+                    <div className="discount-badge" style={{position:'absolute',top:8,right:8,background:'#e53935',color:'#fff',fontWeight:700,padding:'4px 10px',borderRadius:'8px',fontSize:'1em',zIndex:2}}>%{discount}</div>
                   )}
                   <img src={book.image || 'https://via.placeholder.com/120x170?text=Kitap+Kapak'} alt={book.title} className="book-img" onError={handleImgError} />
                   <h3>{book.title}</h3>
-                  <div className="price-container">
-                    {showDiscountPrice ? (
+                  <div className="price-container" style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}>
+                    {showDiscountPrice && hasDiscount ? (
                       <>
-                        <span className="original-price">{originalPrice} TL</span>
-                        <span className="price">{book.price} TL</span>
+                        <span className="original-price" style={{textDecoration:'line-through', color:'#888', fontSize:'1em'}}>{originalPrice} TL</span>
+                        <span className="price" style={{color:'#1a7f37', fontWeight:700, fontSize:'1.25em'}}>{discountedPrice} TL</span>
                       </>
                     ) : (
-                      <span className="price red">{book.price} TL</span>
+                      <span className="price" style={{color:'#1a7f37', fontWeight:700, fontSize:'1.15em'}}>{book.price} TL</span>
                     )}
                   </div>
                   <button onClick={() => onAddToCart(book)} className="add-btn">Sepete Ekle</button>

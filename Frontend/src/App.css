@@ -2082,3 +2082,9 @@ body {
 .bos-kart {
   visibility: hidden;
 }
+.book-slider-container .section-control-btn {
+  display: none;
+}
+.book-slider-container.has-navigation .section-control-btn {
+  display: block;
+}

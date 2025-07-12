@@ -16,6 +16,8 @@ import HomeScreen from './screens/HomeScreen';
 import BooksScreen from './screens/BooksScreen';
 import BookDetailScreen from './screens/BookDetailScreen';
 import AdminPanelScreen from './screens/AdminPanelScreen';
+import megaCategories from './constants/megaCategories';
+import { fetchAllBooks, fetchBooksBySearch } from './services/bookService';
 
 const LoginForm = React.memo(function LoginForm({ onClose, onLoginSuccess, showToast }) {
   const [mode, setMode] = useState('login'); // 'login' veya 'register'
@@ -368,53 +370,7 @@ const bannerPlaceholder = 'https://via.placeholder.com/900x340?text=Banner+Görs
 // Türkçe alfabesine göre sıralama fonksiyonu
 const turkishSort = (a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' });
 
-// megaCategories'i ve altındaki sub dizilerini Türkçe sıralı hale getir
-const megaCategories = [
-  {
-    name: 'Edebiyat Kitapları',
-    sub: ['Roman', 'Türk Edebiyatı', 'Şiir', 'Deneme', 'Öykü', 'Anı', 'Biyografi']
-  },
-  {
-    name: 'Eğitim Kitapları',
-    sub: ['TYT-AYT Kitapları', 'DGS Kitapları', 'KPSS Kitapları', 'LGS Kitapları', 'YKS Kitapları']
-  },
-  {
-    name: 'Felsefe Kitapları',
-    sub: ['Felsefi Akımlar', 'Din Felsefesi', 'Felsefe Tarihi']
-  },
-  {
-    name: 'Çocuk Kitapları',
-    sub: ['Masallar', 'Hikayeler', 'Roman ve Öyküler', 'Okul Öncesi']
-  },
-  {
-    name: 'Gezi ve Rehber Kitapları',
-    sub: ['Gezi', 'Rehber', 'Türkiye Rehberleri']
-  },
-  {
-    name: 'Sağlık Kitapları',
-    sub: ['Beslenme', 'Aile Sağlığı', 'Çocuk Gelişimi']
-  },
-  {
-    name: 'İnsan ve Toplum Kitapları',
-    sub: ['Kişisel Gelişim', 'Kültür', 'Popüler Kültür']
-  },
-  {
-    name: 'İnanç Kitapları ve Mitolojiler',
-    sub: ['Mitolojiler', 'Dinler Tarihi', 'İslam Kitapları']
-  },
-  {
-    name: 'Psikoloji Kitapları',
-    sub: ['Genel Psikoloji', 'Çocuk Psikolojisi', 'Eğitim Psikolojisi']
-  },
-  {
-    name: 'Hukuk Kitapları',
-    sub: ['Hukuk Üzerine', 'Ders Kitapları', 'Kanun ve Uygulama']
-  }
-]
-  .map(cat => ({ ...cat, sub: cat.sub.slice().sort(turkishSort) }))
-  .sort((a, b) => turkishSort(a.name, b.name));
-
-function MegaMenu({ open, onClose, onSelectSubcat, anchorRef }) {
+function MegaMenu({ open, onClose, onSelectSubcat, anchorRef, setFilters, filters }) {
   const [hovered, setHovered] = React.useState(0);
   const [menuStyle, setMenuStyle] = React.useState({});
   const navigate = useNavigate();
@@ -451,7 +407,11 @@ function MegaMenu({ open, onClose, onSelectSubcat, anchorRef }) {
               key={cat.name}
               className={`mega-menu-cat${hovered === i ? ' active' : ''}`}
               onMouseEnter={() => setHovered(i)}
-              onClick={() => { navigate(`/books?category=${encodeURIComponent(cat.name)}`); onClose(); }}
+              onClick={() => {
+                setFilters(f => ({ ...f, category: cat.name, subcategory: '' }));
+                navigate(`/books?category=${encodeURIComponent(cat.name)}`);
+                onClose();
+              }}
               style={{ cursor: 'pointer' }}
             >
               {cat.name}
@@ -460,7 +420,11 @@ function MegaMenu({ open, onClose, onSelectSubcat, anchorRef }) {
         </div>
         <div className="mega-menu-right">
           {megaCategories[hovered].sub.map(sub => (
-            <div key={sub} className="mega-menu-subcat" onClick={() => { navigate(`/books?category=${encodeURIComponent(megaCategories[hovered].name)}&subcategory=${encodeURIComponent(sub)}`); onClose(); }} style={{ cursor: 'pointer' }}>{sub}</div>
+            <div key={sub} className="mega-menu-subcat" onClick={() => {
+              setFilters(f => ({ ...f, category: megaCategories[hovered].name, subcategory: sub }));
+              navigate(`/books?category=${encodeURIComponent(megaCategories[hovered].name)}&subcategory=${encodeURIComponent(sub)}`);
+              onClose();
+            }} style={{ cursor: 'pointer' }}>{sub}</div>
           ))}
         </div>
       </div>
@@ -489,10 +453,14 @@ function Toast({ message, type = 'success', onClose }) {
 
 
 
-function Navbar({ cartCount, categories, selectedCategory, setSelectedCategory, search, setSearch, onMegaMenu, megaOpen, setMegaOpen, anchorRef, bestSellers, newReleases, handleSelectSubcat, handleAddToCart, handleToggleFavorite, favorites, showLoginForm, setShowLoginForm, user, onLogout }) {
+function Navbar({ cartCount, categories, selectedCategory, setSelectedCategory, search, setSearch, onMegaMenu, megaOpen, setMegaOpen, anchorRef, bestSellers, newReleases, handleSelectSubcat, handleAddToCart, handleToggleFavorite, favorites, showLoginForm, setShowLoginForm, user, onLogout, setFilters, filters }) {
   const [toast, setToast] = React.useState({ show: false, message: '' });
-  const [currentSection, setCurrentSection] = React.useState('campaigns'); // 'campaigns' | 'bestsellers' | 'newreleases'
+  const [currentSection, setCurrentSection] = React.useState('campaigns');
   const navigate = useNavigate();
+  const [searchResults, setSearchResults] = React.useState([]);
+  const [searchLoading, setSearchLoading] = React.useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = React.useState(false);
+  const searchTimeout = React.useRef();
 
   const handlePrevSection = () => {
     setCurrentSection(current => {
@@ -515,87 +483,35 @@ function Navbar({ cartCount, categories, selectedCategory, setSelectedCategory, 
       }
     });
   };
-  // Autocomplete için
-  const [showSuggestions, setShowSuggestions] = React.useState(false);
-  const [suggestions, setSuggestions] = React.useState([]);
-  const [searchHistory, setSearchHistory] = React.useState(() => {
-    const saved = localStorage.getItem('searchHistory');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [showHistory, setShowHistory] = React.useState(false);
   const inputRef = React.useRef(null);
-
-  // Arama geçmişini localStorage'a kaydet
-  React.useEffect(() => {
-    localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-  }, [searchHistory]);
-
-  // Autocomplete mantığı
-  React.useEffect(() => {
-    if (!search) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-    setShowHistory(false);
-    // Kitaplardan arama sonuçlarını oluştur
-    const searchResults = books.filter(book => {
-      const searchLower = search.toLowerCase();
-      return (
-        book.title.toLowerCase().startsWith(searchLower) ||
-        book.author.toLowerCase().startsWith(searchLower) ||
-        (book.publisher && book.publisher.toLowerCase().startsWith(searchLower))
-      );
-    });
-    // En fazla 8 sonuç göster
-    setSuggestions(searchResults.slice(0, 8));
-    setShowSuggestions(searchResults.length > 0);
-  }, [search]);
-
-  // Arama geçmişine ekle
-  const addToSearchHistory = (searchTerm) => {
-    if (searchTerm && !searchHistory.includes(searchTerm)) {
-      const newHistory = [searchTerm, ...searchHistory].slice(0, 5); // Son 5 aramayı tut
-      setSearchHistory(newHistory);
-    }
-  };
-
-  // Arama geçmişinden bir terimi sil
-  const removeFromHistory = (term) => {
-    const newHistory = searchHistory.filter(item => item !== term);
-    setSearchHistory(newHistory);
-  };
-
-  // Arama geçmişini temizle
-  const clearHistory = () => {
-    setSearchHistory([]);
-    localStorage.removeItem('searchHistory');
-  };
-
-  // Dışarı tıklayınca öneri kutusunu ve geçmişi kapat
-  React.useEffect(() => {
-    function handleClick(e) {
-      if (inputRef.current && !inputRef.current.contains(e.target)) {
-        setShowSuggestions(false);
-        setShowHistory(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  // Arama yapıldığında
-  const handleSearch = (term) => {
-    setSearch(term);
-    addToSearchHistory(term);
-    setShowHistory(false);
-    setShowSuggestions(false);
-  };
 
   // Kategori butonları için yardımcı fonksiyon
   const handleCategoryClick = (cat) => {
+    setFilters(f => ({ ...f, category: cat, subcategory: '' }));
+    setSelectedCategory(cat);
     navigate(`/books?category=${encodeURIComponent(cat)}`);
   };
+
+  // Canlı arama (debounce)
+  React.useEffect(() => {
+    if (!search) {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+    setSearchLoading(true);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      fetchBooksBySearch(search)
+        .then(data => {
+          setSearchResults(data);
+          setShowSearchDropdown(true);
+        })
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearchLoading(false));
+    }, 100);
+    return () => clearTimeout(searchTimeout.current);
+  }, [search]);
 
   // Panel fonksiyonları kaldırıldı
   return (
@@ -652,17 +568,8 @@ function Navbar({ cartCount, categories, selectedCategory, setSelectedCategory, 
                        color: '#999'
                      }
                    }}
-                  onFocus={(e) => {
-                    e.target.style.backgroundColor = '#fff';
-                     e.target.style.borderColor = '#1a7f37';
-                     e.target.style.boxShadow = '0 0 0 4px rgba(26, 127, 55, 0.1)';
-                     search ? setShowSuggestions(true) : setShowHistory(true);
-                   }}
-                   onBlur={(e) => {
-                     e.target.style.backgroundColor = '#fff';
-                     e.target.style.borderColor = '#e0e0e0';
-                     e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-                   }}
+                  onFocus={() => { if (search) setShowSearchDropdown(true); }}
+                  onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
                   autoComplete="off"
                 />
                 <svg
@@ -687,7 +594,6 @@ function Navbar({ cartCount, categories, selectedCategory, setSelectedCategory, 
                   <button
                     onClick={() => {
                       setSearch('');
-                      setShowSuggestions(false);
                     }}
                     style={{
                       position: 'absolute',
@@ -718,185 +624,35 @@ function Navbar({ cartCount, categories, selectedCategory, setSelectedCategory, 
                   </button>
                 )}
               </div>
-          {showSuggestions && suggestions.length > 0 && (
-            <ul style={{
-              position: 'absolute',
-              top: 'calc(100% + 8px)',
-              left: 0,
-              right: 0,
-              backgroundColor: '#f8f9fa',
-              border: '1px solid #e0e0e0',
-              borderRadius: '16px',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-              zIndex: 1000,
-              margin: 0,
-              padding: '8px',
-              listStyle: 'none',
-              maxHeight: '400px',
-              overflowY: 'auto',
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'rgba(255, 255, 255, 0.3) transparent'
-            }}>
-              {suggestions.map((book, i) => (
-                <li key={i} onMouseDown={() => handleSearch(book.title)} style={{
-                  padding: '12px 16px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '12px',
-                  borderBottom: '1px solid #f0f0f0',
-                  transition: 'background-color 0.2s',
-                  ':hover': {
-                    backgroundColor: '#f0f0f0'
-                   }
-                }}>
-                  <img src={book.image || placeholder} alt={book.title} style={{
-                    width: '45px',
-                    height: '60px',
-                    objectFit: 'cover',
-                    borderRadius: '4px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                  }} />
-                  <div style={{flex: 1}}>
-                    <div style={{
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      color: '#333',
-                      marginBottom: '4px'
-                    }}>{book.title}</div>
-                    <div style={{
-                      fontSize: '13px',
-                      color: '#666',
-                      marginBottom: '4px'
-                    }}>{book.author}</div>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#1a7f37'
-                      }}>{book.price} TL</div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: '#666',
-                        backgroundColor: '#f0f0f0',
-                        padding: '2px 8px',
-                        borderRadius: '4px'
-                      }}>{book.publisher}</div>
-                    </div>
-                  </div>
+
+          {/* Canlı arama sonuçları dropdown */}
+          {showSearchDropdown && searchResults.length > 0 && (
+            <ul className="search-suggestions">
+              {searchResults.map(book => (
+                <li key={book.id} onMouseDown={() => navigate(`/book/${book.id}`)}>
+                  <img src={book.image || ''} alt={book.title} style={{width:32, height:44, objectFit:'cover', marginRight:8, borderRadius:4}} />
+                  <span>{book.title}</span> <span style={{color:'#888', fontSize:'0.95em', marginLeft: '8px'}}>- {book.author}</span>
                 </li>
               ))}
             </ul>
-          )}
-          {showHistory && searchHistory.length > 0 && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 8px)',
-              left: 0,
-              right: 0,
-              backgroundColor: '#f8f9fa',
-              border: '1px solid #e0e0e0',
-              borderRadius: '16px',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-              zIndex: 1000,
-              padding: '16px',
-              color: '#333'
-            }}>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e0e0e0', paddingBottom: '12px'}}>
-                <h4 style={{margin: 0, fontSize: '15px', color: '#333', fontWeight: '600'}}>Son Aramalar</h4>
-                <button onClick={clearHistory} style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#666',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  transition: 'all 0.2s ease',
-                  ':hover': {
-                    backgroundColor: '#f0f0f0',
-                    color: '#333'
-                  }
-                }}>Geçmişi Temizle</button>
-              </div>
-              {searchHistory.map((term, index) => (
-                <div key={index} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  transition: 'background-color 0.2s ease',
-                  ':hover': {
-                    backgroundColor: '#f8f9fa'
-                  }
-                }}>
-                  <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                    <svg style={{
-                      width: '16px',
-                      height: '16px',
-                      color: '#999'
-                    }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="12 19 5 12 12 5"></polyline>
-                      <polyline points="19 12 5 12"></polyline>
-                    </svg>
-                    <span onClick={() => handleSearch(term)} style={{
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      color: '#666',
-                      transition: 'color 0.2s ease',
-                      ':hover': {
-                        color: '#333'
-                      }
-                    }}>{term}</span>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeFromHistory(term);
-                      e.preventDefault();
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: '#999',
-                      padding: '4px',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s ease',
-                      ':hover': {
-                        backgroundColor: '#f0f0f0',
-                        color: '#333'
-                      }
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
           )}
         </div>
 
         {/* Sağ taraf - Favoriler ve Giriş */}
         <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-          <button style={{
-            padding: '8px 16px',
-            backgroundColor: '#1a7f37',
-            color: '#fff',
-            textDecoration: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '500',
-            border: 'none',
-            cursor: 'pointer'
-          }}>Sepetim</button>
+          {user && (
+            <button style={{
+              padding: '8px 16px',
+              backgroundColor: '#1a7f37',
+              color: '#fff',
+              textDecoration: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              border: 'none',
+              cursor: 'pointer'
+            }}>Sepetim</button>
+          )}
           {user ? (
             <>
               <span style={{ color: '#fff', fontSize: '14px', fontWeight: 500 }}>
@@ -1114,13 +870,13 @@ function BookSection({ title, books, onAddToCart, onToggleFavorite, favorites, s
   return (
     <div className="book-section" style={{backgroundColor: '#e0e0e0', padding: '20px', borderRadius: '8px', marginBottom: '24px'}}>
       <h2>{title}</h2>
-      <div className="book-slider-container">
+      <div className={`book-slider-container${books.length > 4 ? ' has-navigation' : ''}`}>
         <Swiper
           modules={[Navigation]}
-          navigation={{
+          navigation={books.length > 4 ? {
             nextEl: `.section-control-btn.next-${title.replace(/\s/g, '')}`,
             prevEl: `.section-control-btn.prev-${title.replace(/\s/g, '')}`
-          }}
+          } : false}
           spaceBetween={48}
           slidesPerView={4}
           style={{ width: '100%' }}
@@ -1163,24 +919,28 @@ function BookSection({ title, books, onAddToCart, onToggleFavorite, favorites, s
             );
           })}
         </Swiper>
-        <button 
-          className={`section-control-btn prev prev-${title.replace(/\s/g, '')}`}
-          aria-label="Önceki Kitaplar"
-          style={{top: '50%', transform: 'translateY(-50%)'}}
-        >
-          <svg viewBox="0 0 24 24">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
-        <button 
-          className={`section-control-btn next next-${title.replace(/\s/g, '')}`}
-          aria-label="Sonraki Kitaplar"
-          style={{top: '50%', transform: 'translateY(-50%)', display: isEnd ? 'none' : undefined}}
-        >
-          <svg viewBox="0 0 24 24">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </button>
+        {books.length > 4 && (
+          <>
+            <button 
+              className={`section-control-btn prev prev-${title.replace(/\s/g, '')}`}
+              aria-label="Önceki Kitaplar"
+              style={{top: '50%', transform: 'translateY(-50%)'}}
+            >
+              <svg viewBox="0 0 24 24">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <button 
+              className={`section-control-btn next next-${title.replace(/\s/g, '')}`}
+              aria-label="Sonraki Kitaplar"
+              style={{top: '50%', transform: 'translateY(-50%)', display: isEnd ? 'none' : undefined}}
+            >
+              <svg viewBox="0 0 24 24">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1610,6 +1370,94 @@ function BooksPageWrapper(props) {
   return props.children;
 }
 
+function AppRoutes(props) {
+  const navigate = useNavigate();
+
+  const handleShowAllBooks = () => {
+    props.setFilters({ category: '', subcategory: '', minPrice: '', maxPrice: '', author: '', publisher: '' });
+    props.setFilterSearch && props.setFilterSearch('');
+    navigate('/books');
+    // Sayfa geçişi sonrası en üste scroll yap
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
+  };
+
+  return (
+    <>
+      <Navbar 
+        cartCount={props.cart.length} 
+        categories={props.categories} 
+        selectedCategory={props.selectedCategory} 
+        setSelectedCategory={props.setSelectedCategory} 
+        search={props.search} 
+        setSearch={props.setSearch} 
+        onMegaMenu={props.onMegaMenu} 
+        megaOpen={props.megaOpen} 
+        setMegaOpen={props.setMegaOpen}
+        anchorRef={props.anchorRef} 
+        bestSellers={props.bestSellers} 
+        newReleases={props.newReleases}
+        handleSelectSubcat={props.handleSelectSubcat}
+        handleAddToCart={props.handleAddToCart}
+        handleToggleFavorite={props.handleToggleFavorite}
+        favorites={props.favorites}
+        showLoginForm={props.showLoginForm}
+        setShowLoginForm={props.setShowLoginForm}
+        user={props.user}
+        onLogout={props.handleLogout}
+        setFilters={props.setFilters}
+        filters={props.filters}
+      />
+      {props.showLoginForm && (
+        <LoginForm
+          onClose={() => props.setShowLoginForm(false)}
+          onLoginSuccess={(userData) => props.setUser(userData)}
+          showToast={props.showToast}
+        />
+      )}
+      <MegaMenu open={props.megaOpen} onClose={() => props.setMegaOpen(false)} onSelectSubcat={props.handleSelectSubcat} anchorRef={props.anchorRef} setFilters={props.setFilters} filters={props.filters} />
+      <GlobalToast toast={props.toast} onClose={() => props.setToast(null)} />
+      <Routes>
+        <Route path="/" element={
+          <HomeScreen 
+            books={props.books}
+            onAddToCart={props.handleAddToCart}
+            onToggleFavorite={props.handleToggleFavorite}
+            favorites={props.favorites}
+            onShowAllBooks={handleShowAllBooks}
+          />
+        } />
+        <Route path="/books" element={
+          <BooksScreen
+            books={props.filteredBooks}
+            filterSearch={props.filterSearch}
+            setFilterSearch={props.setFilterSearch}
+            filters={props.filters}
+            setFilters={props.setFilters}
+            sort={props.sort}
+            setSort={props.setSort}
+            allCategories={props.allCategories}
+            allAuthors={props.allAuthors}
+            allPublishers={props.allPublishers}
+            handleAddToCart={props.handleAddToCart}
+          />
+        } />
+        <Route path="/book/:id" element={
+          <BookDetailScreen 
+            books={props.books}
+            onAddToCart={props.handleAddToCart}
+            onToggleFavorite={props.handleToggleFavorite}
+            favorites={props.favorites}
+          />
+        } />
+        <Route path="/admin" element={<AdminPanelScreen />} />
+      </Routes>
+      <Footer />
+    </>
+  );
+}
+
 function App() {
   const [cart, setCart] = React.useState([]);
   const [favorites, setFavorites] = React.useState([]);
@@ -1660,6 +1508,10 @@ function App() {
   };
 
   const handleAddToCart = (book) => {
+    if (!user) {
+      showToast('Lütfen giriş yapınız', 'error');
+      return;
+    }
     setCart(prev => {
       const exists = prev.find(item => item.id === book.id);
       if (exists) {
@@ -1724,76 +1576,45 @@ function App() {
   const newReleases = shuffled.slice(0, 5);
 
   return (
-    <>
-      <Router>
-        <Navbar 
-          cartCount={cart.length} 
-          categories={categories} 
-          selectedCategory={selectedCategory} 
-          setSelectedCategory={setSelectedCategory} 
-          search={search} 
-          setSearch={setSearch} 
-          onMegaMenu={() => setMegaOpen(!megaOpen)} 
-          megaOpen={megaOpen} 
-          setMegaOpen={setMegaOpen}
-          anchorRef={anchorRef} 
-          bestSellers={bestSellers} 
-          newReleases={newReleases}
-          handleSelectSubcat={handleSelectSubcat}
-          handleAddToCart={handleAddToCart}
-          handleToggleFavorite={handleToggleFavorite}
-          favorites={favorites}
-          showLoginForm={showLoginForm}
-          setShowLoginForm={setShowLoginForm}
-          user={user}
-          onLogout={handleLogout}
-        />
-        {showLoginForm && (
-          <LoginForm
-            onClose={() => setShowLoginForm(false)}
-            onLoginSuccess={(userData) => setUser(userData)}
-            showToast={showToast}
-          />
-        )}
-        <MegaMenu open={megaOpen} onClose={() => setMegaOpen(false)} onSelectSubcat={handleSelectSubcat} anchorRef={anchorRef} />
-        <GlobalToast toast={toast} onClose={() => setToast(null)} />
-        <Routes>
-          <Route path="/" element={
-            <HomeScreen 
-              books={books}
-              onAddToCart={handleAddToCart}
-              onToggleFavorite={handleToggleFavorite}
-              favorites={favorites}
-            />
-          } />
-          <Route path="/books" element={
-            <BooksScreen
-              books={filteredBooks}
-              filterSearch={filterSearch}
-              setFilterSearch={setFilterSearch}
-              filters={filters}
-              setFilters={setFilters}
-              sort={sort}
-              setSort={setSort}
-              allCategories={allCategories}
-              allAuthors={allAuthors}
-              allPublishers={allPublishers}
-              handleAddToCart={handleAddToCart}
-            />
-          } />
-          <Route path="/book/:id" element={
-            <BookDetailScreen 
-              books={books}
-              onAddToCart={handleAddToCart}
-              onToggleFavorite={handleToggleFavorite}
-              favorites={favorites}
-            />
-          } />
-          <Route path="/admin" element={<AdminPanelScreen />} />
-        </Routes>
-      </Router>
-      <Footer />
-    </>
+    <Router>
+      <AppRoutes
+        cart={cart}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        search={search}
+        setSearch={setSearch}
+        onMegaMenu={() => setMegaOpen(!megaOpen)}
+        megaOpen={megaOpen}
+        setMegaOpen={setMegaOpen}
+        anchorRef={anchorRef}
+        bestSellers={bestSellers}
+        newReleases={newReleases}
+        handleSelectSubcat={handleSelectSubcat}
+        handleAddToCart={handleAddToCart}
+        handleToggleFavorite={handleToggleFavorite}
+        favorites={favorites}
+        showLoginForm={showLoginForm}
+        setShowLoginForm={setShowLoginForm}
+        user={user}
+        handleLogout={handleLogout}
+        setFilters={setFilters}
+        filters={filters}
+        setUser={setUser}
+        toast={toast}
+        setToast={setToast}
+        books={books}
+        filteredBooks={filteredBooks}
+        filterSearch={filterSearch}
+        setFilterSearch={setFilterSearch}
+        sort={sort}
+        setSort={setSort}
+        allCategories={allCategories}
+        allAuthors={allAuthors}
+        allPublishers={allPublishers}
+        showToast={showToast}
+      />
+    </Router>
   );
 }
 

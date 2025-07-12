@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import BookList from '../components/BookList';
+import { fetchBooksByFilter } from '../services/bookService';
+import megaCategories from '../constants/megaCategories';
 
 export default function BooksScreen({
-  books,
+  books: allBooks,
   filterSearch,
   setFilterSearch,
   filters,
@@ -14,22 +16,46 @@ export default function BooksScreen({
   allPublishers,
   handleAddToCart
 }) {
-  // allSubcategories hesaplaması burada yapılmalı
+  const [filteredBooks, setFilteredBooks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Filtreler değişince API'den kitapları çek
+  useEffect(() => {
+    setLoading(true);
+    fetchBooksByFilter({
+      category: filters.category,
+      subcategory: filters.subcategory,
+      author: filters.author,
+      publisher: filters.publisher
+    })
+      .then(data => {
+        setFilteredBooks(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Filtreli kitaplar alınamadı');
+        setLoading(false);
+      });
+  }, [filters.category, filters.subcategory, filters.author, filters.publisher]);
+
+  // allSubcategories: megaCategories'den bul
   const allSubcategories = React.useMemo(() => {
     if (!filters.category) return [];
-    // megaCategories'den bulmak için App.js'den import gerekebilir
+    const found = megaCategories.find(cat => cat.name === filters.category);
+    if (found) return found.sub;
     return [];
   }, [filters.category]);
+
+  // Gösterilecek kitaplar: filtreli API'den gelenler
+  const booksToShow = filteredBooks;
 
   return (
     <div className="books-page-container">
       {/* Sol filtre paneli */}
       <div style={{width: '260px', background: '#fff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: '24px 18px', height: 'fit-content'}}>
         <h3 style={{fontSize: '1.1rem', marginBottom: '18px'}}>Filtrele</h3>
-        <div style={{marginBottom: '18px'}}>
-          <label style={{fontWeight: 500}}>Arama</label>
-          <input type="text" value={filterSearch} onChange={e => setFilterSearch(e.target.value)} placeholder="Kitap, yazar veya yayınevi..." style={{width: '100%', marginTop: '6px', padding: '6px', borderRadius: '6px', border: '1px solid #ccc'}} />
-        </div>
+        {/* Arama kutusu kaldırıldı */}
         <div style={{marginBottom: '18px'}}>
           <label style={{fontWeight: 500}}>Kategori</label>
           <select value={filters.category} onChange={e => { setFilters(f => ({...f, category: e.target.value, subcategory: ''})); window.scrollTo({top: 0, behavior: 'smooth'}); }} style={{width: '100%', marginTop: '6px', padding: '6px', borderRadius: '6px'}}>
@@ -59,15 +85,14 @@ export default function BooksScreen({
             {allPublishers.map(pub => <option key={pub} value={pub}>{pub}</option>)}
           </select>
         </div>
-        <button onClick={() => { setFilters({ category: '', subcategory: '', minPrice: '', maxPrice: '', author: '', publisher: '' }); setFilterSearch(''); }} style={{marginTop: '12px', width: '100%', background: '#e0e0e0', border: 'none', borderRadius: '6px', padding: '8px', cursor: 'pointer'}}>Filtreleri Temizle</button>
+        <button onClick={() => { setFilters({ category: '', subcategory: '', minPrice: '', maxPrice: '', author: '', publisher: '' }); }} style={{marginTop: '12px', width: '100%', background: '#e0e0e0', border: 'none', borderRadius: '6px', padding: '8px', cursor: 'pointer'}}>Filtreleri Temizle</button>
       </div>
       {/* Kitap listesi */}
       <div style={{flex: 1}}>
+        {loading ? <div>Yükleniyor...</div> : error ? <div style={{color:'red'}}>{error}</div> :
         <BookList 
           onAddToCart={handleAddToCart}
-          books={books}
-          search={filterSearch}
-          setSearch={setFilterSearch}
+          books={booksToShow}
           filters={filters}
           setFilters={setFilters}
           sort={sort}
@@ -75,7 +100,7 @@ export default function BooksScreen({
           allCategories={allCategories}
           allAuthors={allAuthors}
           allPublishers={allPublishers}
-        />
+        />}
       </div>
     </div>
   );
