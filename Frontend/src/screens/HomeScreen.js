@@ -3,7 +3,7 @@ import BannerSlider from '../components/BannerSlider';
 import BookSection from '../components/BookSection';
 import { fetchBestsellers, fetchDiscountedBooks } from '../services/bookService';
 
-export default function HomeScreen({ books, onAddToCart, onToggleFavorite, favorites, onShowAllBooks }) {
+export default function HomeScreen({ books, onAddToCart, onToggleFavorite, favorites, onShowAllBooks, cart }) {
   const [bestsellers, setBestsellers] = useState([]);
   const [discounted, setDiscounted] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +37,7 @@ export default function HomeScreen({ books, onAddToCart, onToggleFavorite, favor
         favorites={favorites}
         showDiscountBadge={true}
         showDiscountPrice={true}
+        cart={cart}
       />
       <BookSection 
         title="Çok Satanlar" 
@@ -46,15 +47,7 @@ export default function HomeScreen({ books, onAddToCart, onToggleFavorite, favor
         favorites={favorites}
         showDiscountBadge={false}
         showDiscountPrice={false}
-      />
-      <BookSection 
-        title="Yeni Çıkanlar" 
-        books={books.slice(20, 30)} 
-        onAddToCart={onAddToCart} 
-        onToggleFavorite={onToggleFavorite}
-        favorites={favorites}
-        showDiscountBadge={false}
-        showDiscountPrice={false}
+        cart={cart}
       />
       <div style={{width: '100%', display: 'flex', justifyContent: 'center', margin: '32px 0'}}>
         <button 

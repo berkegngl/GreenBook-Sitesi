@@ -51,4 +51,13 @@ export async function fetchBooksBySearch(query) {
   return data;
 }
 
+export async function fetchBookById(id) {
+  const response = await fetch(`${BASE_URL}/Books/${id}`);
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error('Kitap detayı alınamadı');
+  }
+  return data;
+}
+
  

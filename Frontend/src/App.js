@@ -453,13 +453,14 @@ function Toast({ message, type = 'success', onClose }) {
 
 
 
-function Navbar({ cartCount, categories, selectedCategory, setSelectedCategory, search, setSearch, onMegaMenu, megaOpen, setMegaOpen, anchorRef, bestSellers, newReleases, handleSelectSubcat, handleAddToCart, handleToggleFavorite, favorites, showLoginForm, setShowLoginForm, user, onLogout, setFilters, filters }) {
+function Navbar({ cartCount, cart, onRemoveFromCart, onClearCart, categories, selectedCategory, setSelectedCategory, search, setSearch, onMegaMenu, megaOpen, setMegaOpen, anchorRef, bestSellers, newReleases, handleSelectSubcat, handleAddToCart, handleToggleFavorite, favorites, showLoginForm, setShowLoginForm, user, onLogout, setFilters, filters }) {
   const [toast, setToast] = React.useState({ show: false, message: '' });
   const [currentSection, setCurrentSection] = React.useState('campaigns');
   const navigate = useNavigate();
   const [searchResults, setSearchResults] = React.useState([]);
   const [searchLoading, setSearchLoading] = React.useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = React.useState(false);
+  const [showCartDropdown, setShowCartDropdown] = React.useState(false);
   const searchTimeout = React.useRef();
 
   const handlePrevSection = () => {
@@ -638,20 +639,229 @@ function Navbar({ cartCount, categories, selectedCategory, setSelectedCategory, 
           )}
         </div>
 
-        {/* Sağ taraf - Favoriler ve Giriş */}
+        {/* Sağ taraf - Sepet, Favoriler ve Giriş */}
         <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
           {user && (
-            <button style={{
-              padding: '8px 16px',
-              backgroundColor: '#1a7f37',
-              color: '#fff',
-              textDecoration: 'none',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: '500',
-              border: 'none',
-              cursor: 'pointer'
-            }}>Sepetim</button>
+            <div style={{ position: 'relative' }}>
+              <button 
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#1a7f37',
+                  color: '#fff',
+                  textDecoration: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  position: 'relative'
+                }}
+                onClick={() => setShowCartDropdown(!showCartDropdown)}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="9" cy="21" r="1"></circle>
+                  <circle cx="20" cy="21" r="1"></circle>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                Sepetim
+                {cartCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    right: '-8px',
+                    backgroundColor: '#ff4444',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    width: '20px',
+                    height: '20px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid #000'
+                  }}>
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </button>
+              
+              {/* Sepet Dropdown */}
+              {showCartDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  width: '320px',
+                  backgroundColor: '#fff',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                  border: '1px solid #e0e0e0',
+                  zIndex: 1000,
+                  marginTop: '8px',
+                  minHeight: '420px',
+                  maxHeight: '520px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  paddingBottom: '24px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '16px', borderBottom: '1px solid #eee' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#333' }}>
+                      Sepetim ({cartCount} ürün)
+                    </h3>
+                  </div>
+                  <div style={{ flex: 1, maxHeight: '320px', overflowY: 'auto' }}>
+                    {cart.length === 0 ? (
+                      <div style={{ padding: '24px', textAlign: 'center', color: '#666' }}>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '12px', opacity: 0.5 }}>
+                          <circle cx="9" cy="21" r="1"></circle>
+                          <circle cx="20" cy="21" r="1"></circle>
+                          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        <p style={{ margin: 0, fontSize: '14px' }}>Sepetiniz boş</p>
+                      </div>
+                    ) : (
+                      cart.map(item => (
+                        <div key={item.id} style={{
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #f0f0f0',
+                          display: 'flex',
+                          gap: '12px',
+                          alignItems: 'center'
+                        }}>
+                          <img 
+                            src={item.image || 'https://via.placeholder.com/40x56?text=Kitap'} 
+                            alt={item.title}
+                            style={{
+                              width: '40px',
+                              height: '56px',
+                              objectFit: 'cover',
+                              borderRadius: '4px',
+                              flexShrink: 0
+                            }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <h4 style={{ 
+                              margin: '0 0 4px 0', 
+                              fontSize: '14px', 
+                              fontWeight: 500, 
+                              color: '#333',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {item.title}
+                            </h4>
+                            <p style={{ 
+                              margin: '0 0 4px 0', 
+                              fontSize: '12px', 
+                              color: '#666',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {item.author}
+                            </p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '14px', fontWeight: 600, color: '#1a7f37' }}>
+                                {item.price} TL
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => onRemoveFromCart(item.id)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#999',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            title="Kaldır"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  {cart.length > 0 && (
+                    <div style={{
+                      padding: '16px',
+                      borderTop: '1px solid #eee',
+                      backgroundColor: '#f9f9f9',
+                      marginTop: '16px',
+                      position: 'sticky',
+                      bottom: 0,
+                      left: 0,
+                      right: 0
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '16px', fontWeight: 600, color: '#333' }}>Toplam:</span>
+                        <span style={{ fontSize: '18px', fontWeight: 700, color: '#1a7f37' }}>
+                          {cart.reduce((sum, item) => sum + Number(item.price), 0)} TL
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => {
+                            navigate('/cart');
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '12px 16px',
+                            backgroundColor: '#1a7f37',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '15px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Alışverişi Tamamla
+                        </button>
+                        <button
+                          style={{
+                            padding: '12px 14px',
+                            backgroundColor: '#f44336',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '15px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                          title="Sepeti Temizle"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onClearCart();
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 6h18"></path>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
           {user ? (
             <>
@@ -862,7 +1072,7 @@ function Navbar({ cartCount, categories, selectedCategory, setSelectedCategory, 
   );
 }
 
-function BookSection({ title, books, onAddToCart, onToggleFavorite, favorites, showDiscountBadge, showDiscountPrice }) {
+function BookSection({ title, books, onAddToCart, onToggleFavorite, favorites, showDiscountBadge, showDiscountPrice, cart }) {
   const [isBeginning, setIsBeginning] = React.useState(true);
   const [isEnd, setIsEnd] = React.useState(false);
   let swiperRef = React.useRef();
@@ -913,7 +1123,15 @@ function BookSection({ title, books, onAddToCart, onToggleFavorite, favorites, s
                       <span className="price red">{book.price} TL</span>
                     )}
                   </div>
-                  <button onClick={() => onAddToCart(book)} className="add-btn">Sepete Ekle</button>
+                  <button 
+                    onClick={() => onAddToCart(book)} 
+                    className="add-btn"
+                    style={{
+                      backgroundColor: cart && cart.find(item => item.id === book.id) ? '#d32f2f' : '#1a7f37'
+                    }}
+                  >
+                    {cart && cart.find(item => item.id === book.id) ? 'Sepetten Çıkar' : 'Sepete Ekle'}
+                  </button>
                 </div>
               </SwiperSlide>
             );
@@ -1161,7 +1379,7 @@ function Footer() {
   );
 }
 
-function BookList({ onAddToCart, books, search, setSearch, filters, setFilters, sort, setSort, allCategories, allAuthors, allPublishers }) {
+function BookList({ onAddToCart, books, search, setSearch, filters, setFilters, sort, setSort, allCategories, allAuthors, allPublishers, cart }) {
   const [page, setPage] = React.useState(1);
   const booksPerPage = 40;
   const totalPages = Math.ceil(books.length / booksPerPage);
@@ -1203,7 +1421,15 @@ function BookList({ onAddToCart, books, search, setSearch, filters, setFilters, 
                 <p className="author">{book.author}</p>
                 <p className="price">{book.price} TL</p>
                 <button onClick={() => window.location.href = `/book/${book.id}`} className="details-btn">Detay</button>
-                <button onClick={() => onAddToCart(book)} className="add-btn">Sepete Ekle</button>
+                <button 
+                  onClick={() => onAddToCart(book)} 
+                  className="add-btn"
+                  style={{
+                    backgroundColor: cart && cart.find(item => item.id === book.id) ? '#d32f2f' : '#1a7f37'
+                  }}
+                >
+                  {cart && cart.find(item => item.id === book.id) ? 'Sepetten Çıkar' : 'Sepete Ekle'}
+                </button>
               </div>
             ))}
             {/* Eğer kitap sayısı 5'ten azsa, grid hizasını korumak için görünmez placeholderlar ekle */}
@@ -1231,7 +1457,7 @@ function BookList({ onAddToCart, books, search, setSearch, filters, setFilters, 
   );
 }
 
-function BookDetail({ bookId, onAddToCart, onToggleFavorite, favorites }) {
+function BookDetail({ bookId, onAddToCart, onToggleFavorite, favorites, cart }) {
   const book = books.find(b => b.id === parseInt(bookId));
   if (!book) return <div>Kitap bulunamadı.</div>;
   // Benzer kitaplar: aynı kategori ve farklı id
@@ -1245,7 +1471,15 @@ function BookDetail({ bookId, onAddToCart, onToggleFavorite, favorites }) {
         <p className="author">{book.author}</p>
         <p>{book.description}</p>
         <p className="price">{book.price} TL</p>
-        <button onClick={() => onAddToCart(book)} className="add-btn">Sepete Ekle</button>
+        <button 
+          onClick={() => onAddToCart(book)} 
+          className="add-btn"
+          style={{
+            backgroundColor: cart && cart.find(item => item.id === book.id) ? '#d32f2f' : '#1a7f37'
+          }}
+        >
+          {cart && cart.find(item => item.id === book.id) ? 'Sepetten Çıkar' : 'Sepete Ekle'}
+        </button>
         <button onClick={() => onToggleFavorite(book.id)} className={isFav ? 'fav-btn active' : 'fav-btn'}>{isFav ? 'Favoriden Çıkar' : 'Favorilere Ekle'}</button>
       </div>
       {similar.length > 0 && (
@@ -1259,7 +1493,15 @@ function BookDetail({ bookId, onAddToCart, onToggleFavorite, favorites }) {
                 <p className="author">{sim.author}</p>
                 <p className="price">{sim.price} TL</p>
                 <button onClick={() => window.location.href = `/book/${sim.id}`} className="details-btn">Detay</button>
-                <button onClick={() => onAddToCart(sim)} className="add-btn">Sepete Ekle</button>
+                <button 
+                  onClick={() => onAddToCart(sim)} 
+                  className="add-btn"
+                  style={{
+                    backgroundColor: cart && cart.find(item => item.id === sim.id) ? '#d32f2f' : '#1a7f37'
+                  }}
+                >
+                  {cart && cart.find(item => item.id === sim.id) ? 'Sepetten Çıkar' : 'Sepete Ekle'}
+                </button>
               </div>
             ))}
           </div>
@@ -1269,8 +1511,8 @@ function BookDetail({ bookId, onAddToCart, onToggleFavorite, favorites }) {
   );
 }
 
-function Cart({ cart, onRemoveFromCart }) {
-  const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+function Cart({ cart, onRemoveFromCart, onClearCart }) {
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
   return (
     <div className="cart-page">
       <h2>Sepetim</h2>
@@ -1282,13 +1524,29 @@ function Cart({ cart, onRemoveFromCart }) {
               <div>
                 <h4>{item.title}</h4>
                 <p>{item.author}</p>
-                <p>Adet: {item.qty}</p>
                 <p>Fiyat: {item.price} TL</p>
                 <button onClick={() => onRemoveFromCart(item.id)} className="remove-btn">Kaldır</button>
               </div>
             </div>
           ))}
-          <h3>Toplam: {total} TL</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
+            <h3>Toplam: {total} TL</h3>
+            <button 
+              onClick={onClearCart}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#d32f2f',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              Sepeti Temizle
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -1372,6 +1630,8 @@ function BooksPageWrapper(props) {
 
 function AppRoutes(props) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAdminPage = location.pathname === '/admin';
 
   const handleShowAllBooks = () => {
     props.setFilters({ category: '', subcategory: '', minPrice: '', maxPrice: '', author: '', publisher: '' });
@@ -1385,30 +1645,36 @@ function AppRoutes(props) {
 
   return (
     <>
-      <Navbar 
-        cartCount={props.cart.length} 
-        categories={props.categories} 
-        selectedCategory={props.selectedCategory} 
-        setSelectedCategory={props.setSelectedCategory} 
-        search={props.search} 
-        setSearch={props.setSearch} 
-        onMegaMenu={props.onMegaMenu} 
-        megaOpen={props.megaOpen} 
-        setMegaOpen={props.setMegaOpen}
-        anchorRef={props.anchorRef} 
-        bestSellers={props.bestSellers} 
-        newReleases={props.newReleases}
-        handleSelectSubcat={props.handleSelectSubcat}
-        handleAddToCart={props.handleAddToCart}
-        handleToggleFavorite={props.handleToggleFavorite}
-        favorites={props.favorites}
-        showLoginForm={props.showLoginForm}
-        setShowLoginForm={props.setShowLoginForm}
-        user={props.user}
-        onLogout={props.handleLogout}
-        setFilters={props.setFilters}
-        filters={props.filters}
-      />
+      {!isAdminPage && (
+        <Navbar 
+          cartCount={props.cart.length} 
+          cart={props.cart}
+          onRemoveFromCart={props.handleRemoveFromCart}
+          onClearCart={props.handleClearCart}
+          categories={props.categories} 
+          selectedCategory={props.selectedCategory} 
+          setSelectedCategory={props.setSelectedCategory} 
+          search={props.search} 
+          setSearch={props.setSearch} 
+          onMegaMenu={props.onMegaMenu} 
+          megaOpen={props.megaOpen} 
+          setMegaOpen={props.setMegaOpen}
+          anchorRef={props.anchorRef} 
+          bestSellers={props.bestSellers} 
+          newReleases={props.newReleases}
+          handleSelectSubcat={props.handleSelectSubcat}
+          handleAddToCart={props.handleAddToCart}
+          handleRemoveFromCart={props.handleRemoveFromCart}
+          handleToggleFavorite={props.handleToggleFavorite}
+          favorites={props.favorites}
+          showLoginForm={props.showLoginForm}
+          setShowLoginForm={props.setShowLoginForm}
+          user={props.user}
+          onLogout={props.handleLogout}
+          setFilters={props.setFilters}
+          filters={props.filters}
+        />
+      )}
       {props.showLoginForm && (
         <LoginForm
           onClose={() => props.setShowLoginForm(false)}
@@ -1416,7 +1682,9 @@ function AppRoutes(props) {
           showToast={props.showToast}
         />
       )}
-      <MegaMenu open={props.megaOpen} onClose={() => props.setMegaOpen(false)} onSelectSubcat={props.handleSelectSubcat} anchorRef={props.anchorRef} setFilters={props.setFilters} filters={props.filters} />
+      {!isAdminPage && (
+        <MegaMenu open={props.megaOpen} onClose={() => props.setMegaOpen(false)} onSelectSubcat={props.handleSelectSubcat} anchorRef={props.anchorRef} setFilters={props.setFilters} filters={props.filters} />
+      )}
       <GlobalToast toast={props.toast} onClose={() => props.setToast(null)} />
       <Routes>
         <Route path="/" element={
@@ -1426,6 +1694,7 @@ function AppRoutes(props) {
             onToggleFavorite={props.handleToggleFavorite}
             favorites={props.favorites}
             onShowAllBooks={handleShowAllBooks}
+            cart={props.cart}
           />
         } />
         <Route path="/books" element={
@@ -1441,6 +1710,7 @@ function AppRoutes(props) {
             allAuthors={props.allAuthors}
             allPublishers={props.allPublishers}
             handleAddToCart={props.handleAddToCart}
+            cart={props.cart}
           />
         } />
         <Route path="/book/:id" element={
@@ -1449,11 +1719,12 @@ function AppRoutes(props) {
             onAddToCart={props.handleAddToCart}
             onToggleFavorite={props.handleToggleFavorite}
             favorites={props.favorites}
+            cart={props.cart}
           />
         } />
-        <Route path="/admin" element={<AdminPanelScreen />} />
+       <Route path="/admin" element={<AdminPanelScreen setUser={props.setUser} />} />
       </Routes>
-      <Footer />
+      {!isAdminPage && <Footer />}
     </>
   );
 }
@@ -1483,6 +1754,39 @@ function App() {
     }
     return null;
   });
+
+  // Kullanıcıya özel sepet yönetimi
+  const getCartKey = (userId) => `cart_${userId}`;
+  
+  // Kullanıcı giriş yaptığında sepetini yükle
+  React.useEffect(() => {
+    if (user && user.id) {
+      const cartKey = getCartKey(user.id);
+      const savedCart = localStorage.getItem(cartKey);
+      if (savedCart) {
+        try {
+          const parsedCart = JSON.parse(savedCart);
+          setCart(parsedCart);
+        } catch (error) {
+          console.error('Sepet yüklenirken hata:', error);
+          setCart([]);
+        }
+      } else {
+        setCart([]);
+      }
+    } else {
+      // Kullanıcı yoksa sepeti temizle
+      setCart([]);
+    }
+  }, [user]);
+
+  // Sepet değiştiğinde localStorage'a kaydet
+  React.useEffect(() => {
+    if (user && user.id) {
+      const cartKey = getCartKey(user.id);
+      localStorage.setItem(cartKey, JSON.stringify(cart));
+    }
+  }, [cart, user]);
 
   // Tüm kitaplardan benzersiz kategori, yazar, yayınevi listeleri
   const turkishSort = (a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' });
@@ -1515,16 +1819,21 @@ function App() {
     setCart(prev => {
       const exists = prev.find(item => item.id === book.id);
       if (exists) {
-        showToast('Sepetteki ürün adedi artırıldı');
-        return prev.map(item => item.id === book.id ? { ...item, qty: item.qty + 1 } : item);
+        showToast('Ürün sepetten çıkarıldı');
+        return prev.filter(item => item.id !== book.id);
       }
       showToast('Ürün sepete eklendi');
-      return [...prev, { ...book, qty: 1 }];
+      return [...prev, { ...book }];
     });
   };
 
   const handleRemoveFromCart = (id) => {
     setCart(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleClearCart = () => {
+    setCart([]);
+    showToast('Sepet temizlendi');
   };
 
   const handleSelectSubcat = (cat, sub) => {
@@ -1545,6 +1854,8 @@ function App() {
   };
 
   const handleLogout = () => {
+    // Kullanıcı çıkış yaptığında sepeti temizle
+    setCart([]);
     localStorage.removeItem('user');
     setUser(null);
     showToast('Başarıyla çıkış yapıldı!');
@@ -1592,6 +1903,8 @@ function App() {
         newReleases={newReleases}
         handleSelectSubcat={handleSelectSubcat}
         handleAddToCart={handleAddToCart}
+        handleRemoveFromCart={handleRemoveFromCart}
+        handleClearCart={handleClearCart}
         handleToggleFavorite={handleToggleFavorite}
         favorites={favorites}
         showLoginForm={showLoginForm}

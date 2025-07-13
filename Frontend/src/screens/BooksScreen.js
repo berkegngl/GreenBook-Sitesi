@@ -14,7 +14,8 @@ export default function BooksScreen({
   allCategories,
   allAuthors,
   allPublishers,
-  handleAddToCart
+  handleAddToCart,
+  cart
 }) {
   const [filteredBooks, setFilteredBooks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -100,6 +101,7 @@ export default function BooksScreen({
           allCategories={allCategories}
           allAuthors={allAuthors}
           allPublishers={allPublishers}
+          cart={cart}
         />}
       </div>
     </div>
