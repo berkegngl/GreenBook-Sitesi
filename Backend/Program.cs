@@ -22,6 +22,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<DapperContext>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBookService, BookService>();
+builder.Services.AddScoped<IManagementPanel, ManagementPanel>();
+
 
 
 var app = builder.Build();
