@@ -21,19 +21,14 @@ namespace GreenBooksAPI.Controllers
             return Ok(books);
         }
 
-        [HttpGet("category/{category}")]
-        public async Task<IActionResult> GetBooksByCategory(string category)
+        [HttpGet("General")]
+        public async Task<IActionResult> General()
         {
-            var books = await _bookService.GetBooksByCategoryAsync(category);
-            return Ok(books);
+            var counts = await _bookService.General();
+            return Ok(counts);
         }
 
-        [HttpGet("category/{category}/subcategory/{subcategory}")]
-        public async Task<IActionResult> GetBooksByCategoryandSubcategory(string category,string subcategory)
-        {
-            var books = await _bookService.GetBooksByCategoryandSubcategoryAsync(category,subcategory);
-            return Ok(books);
-        }
+       
 
         [HttpGet("discounted")]
         public async Task<IActionResult> GetDiscountedBooks()

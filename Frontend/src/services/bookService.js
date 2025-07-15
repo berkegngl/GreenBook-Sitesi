@@ -60,4 +60,20 @@ export async function fetchBookById(id) {
   return data;
 }
 
+export const bookService = {
+  async getAllBooks() {
+    const response = await fetch(`${BASE_URL}/Books/AllBooks`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    if (!response.ok) {
+      throw new Error('Kitaplar yüklenemedi');
+    }
+    return await response.json();
+  }
+};
+
  

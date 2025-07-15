@@ -5,13 +5,13 @@ namespace GreenBooksAPI.Services
     public interface IBookService
     {
         Task<IEnumerable<Book>> GetBestsellersAsync();
-        Task<IEnumerable<Book>> GetBooksByCategoryAsync(string category);
-
-        Task<IEnumerable<Book>> GetBooksByCategoryandSubcategoryAsync(string category,string subcategory);
+        
 
         Task<IEnumerable<Book>> GetDiscountedBooksAsync();
 
         Task<IEnumerable<Book>> GetAllBooksAsync();
+
+        Task<IEnumerable<GeneralResponse>> General();
 
         Task<IEnumerable<Book>> FilterBooksAsync(string? category, string? subcategory, string? author, string? publisher);
 

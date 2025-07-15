@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import megaCategories from '../constants/megaCategories';
+import { managementService } from '../services/managementService';
+import GlobalToast from '../components/GlobalToast';
+import { bookService } from '../services/bookService';
+import { fetchBooksBySearch } from '../services/bookService';
 
 export default function AdminPanelScreen() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [books, setBooks] = useState([]);
   const [users, setUsers] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const [bookSort, setBookSort] = useState({ field: '', direction: 'asc' });
@@ -26,6 +29,12 @@ export default function AdminPanelScreen() {
     price: '',
     image: ''
   });
+  const [toast, setToast] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
+  const [editModal, setEditModal] = useState({ open: false, book: null });
+  const [dashboardStats, setDashboardStats] = useState({ totalBooks: 0, totalUsers: 0 });
+  const [searchTerm, setSearchTerm] = useState('');
+  const searchTimeout = useRef();
 
   // Sistemdeki mevcut verilerden dinamik listeler oluştur
   const booksData = [
@@ -85,13 +94,13 @@ export default function AdminPanelScreen() {
   const turkishSort = (a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' });
 
   // Dinamik listeler oluştur
-  const allCategories = Array.from(new Set(booksData.map(b => b.category).filter(Boolean)))
+  const allCategories = Array.from(new Set(books.map(b => b.category).filter(Boolean)))
     .filter(cat => cat !== 'Yayınevleri' && cat !== 'Yazarlar')
     .sort(turkishSort);
   
-  const allAuthors = Array.from(new Set(booksData.map(b => b.author).filter(Boolean))).sort(turkishSort);
-  const allPublishers = Array.from(new Set(booksData.map(b => b.publisher).filter(Boolean))).sort(turkishSort);
-  const allTypes = Array.from(new Set(booksData.map(b => b.subcategory).filter(Boolean))).sort(turkishSort);
+  const allAuthors = Array.from(new Set(books.map(b => b.author).filter(Boolean))).sort(turkishSort);
+  const allPublishers = Array.from(new Set(books.map(b => b.publisher).filter(Boolean))).sort(turkishSort);
+  const allTypes = Array.from(new Set(books.map(b => b.subcategory).filter(Boolean))).sort(turkishSort);
   
   // Seçili kategoriye göre türler (subcategory)
   const allSubcategories = React.useMemo(() => {
@@ -100,18 +109,26 @@ export default function AdminPanelScreen() {
     const found = megaCategories.find(cat => cat.name === newBook.category);
     if (found) return found.sub;
     // Yoksa kitaplardan çıkar
-    return Array.from(new Set(booksData.filter(b => b.category === newBook.category).map(b => b.subcategory).filter(Boolean))).sort();
-  }, [newBook.category]);
+    return Array.from(new Set(books.filter(b => b.category === newBook.category).map(b => b.subcategory).filter(Boolean))).sort();
+  }, [newBook.category, books]);
+
+  // Edit modalı için seçili kategoriye göre türler (subcategory)
+  const allSubcategoriesEdit = React.useMemo(() => {
+    if (!editModal.book || !editModal.book.category) return [];
+    const found = megaCategories.find(cat => cat.name === editModal.book.category);
+    if (found) return found.sub;
+    return Array.from(new Set(books.filter(b => b.category === editModal.book.category).map(b => b.subcategory).filter(Boolean))).sort();
+  }, [editModal.book, books]);
 
   const sortedBooks = React.useMemo(() => {
-    if (!bookSort.field) return booksData;
-    const sorted = [...booksData].sort((a, b) => {
+    if (!bookSort.field) return books;
+    const sorted = [...books].sort((a, b) => {
       if (a[bookSort.field] < b[bookSort.field]) return bookSort.direction === 'asc' ? -1 : 1;
       if (a[bookSort.field] > b[bookSort.field]) return bookSort.direction === 'asc' ? 1 : -1;
       return 0;
     });
     return sorted;
-  }, [bookSort]);
+  }, [bookSort, books]);
 
   const handleBookSort = (field) => {
     setBookSort(prev => {
@@ -206,26 +223,39 @@ export default function AdminPanelScreen() {
     setUser(userData);
   }, [navigate]);
 
-  // Örnek veriler (gerçek uygulamada API'den gelecek)
+  // Kitap Yönetimi sekmesine tıklandığında kitapları çek
   useEffect(() => {
-    // Simüle edilmiş veri yükleme
-    setTimeout(() => {
-      setBooks([
-        { id: 1, title: 'Suç ve Ceza', author: 'Dostoyevski', price: 45, stock: 15, category: 'Edebiyat', type: 'Roman' },
-        { id: 2, title: '1984', author: 'George Orwell', price: 35, stock: 8, category: 'Bilim Kurgu', type: 'Roman' },
-        { id: 3, title: 'Küçük Prens', author: 'Saint-Exupéry', price: 25, stock: 22, category: 'Çocuk', type: 'Roman' },
-      ]);
-      setUsers([
-        { id: 1, name: 'Ahmet Yılmaz', email: 'ahmet@example.com', role: 'user', joinDate: '2024-01-15' },
-        { id: 2, name: 'Ayşe Demir', email: 'ayse@example.com', role: 'admin', joinDate: '2023-12-01' },
-      ]);
-      setOrders([
-        { id: 1, customer: 'Mehmet Kaya', total: 120, status: 'Tamamlandı', date: '2024-01-20' },
-        { id: 2, customer: 'Fatma Öz', total: 85, status: 'Hazırlanıyor', date: '2024-01-21' },
-      ]);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    if (activeTab === 'books') {
+      if (searchTerm.trim() === '') {
+        bookService.getAllBooks()
+          .then(data => setBooks(data))
+          .catch(() => setToast({ type: 'error', message: 'Kitaplar yüklenemedi' }));
+      } else {
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+        searchTimeout.current = setTimeout(() => {
+          fetchBooksBySearch(searchTerm)
+            .then(data => setBooks(data))
+            .catch(() => setToast({ type: 'error', message: 'Arama başarısız' }));
+        }, 100);
+      }
+    }
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+  }, [activeTab, searchTerm]);
+
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      managementService.getDashboardStats()
+        .then(data => {
+          console.log('Dashboard API response:', data);
+          const stats = Array.isArray(data) && data.length > 0 ? data[0] : {};
+          setDashboardStats({
+            totalBooks: stats.total_books || 0,
+            totalUsers: stats.total_users || 0
+          });
+        })
+        .catch(() => setDashboardStats({ totalBooks: 0, totalUsers: 0 }));
+    }
+  }, [activeTab]);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -234,25 +264,74 @@ export default function AdminPanelScreen() {
     window.location.reload();
   };
 
-  if (loading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        fontSize: '18px',
-        color: '#666'
-      }}>
-        Yükleniyor...
-      </div>
-    );
-  }
+  const handleDeleteBook = async (id) => {
+    setDeleteConfirm({ open: true, id });
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteConfirm.id;
+    setDeleteConfirm({ open: false, id: null });
+    try {
+      const response = await managementService.deleteBook(id);
+      if (response.status === 200) {
+        setToast({ type: 'success', message: 'Silme başarılı' });
+        setBooks(prev => prev.filter(book => book.id !== id));
+      } else {
+        setToast({ type: 'error', message: 'Bir hata oluştu' });
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Bir hata oluştu' });
+    }
+  };
+
+  const handleEditBook = (book) => {
+    setEditModal({
+      open: true,
+      book: {
+        ...book,
+        discountRate: book.discount_Rate !== undefined ? book.discount_Rate : ''
+      }
+    });
+  };
+
+  const handleEditInputChange = (field, value) => {
+    setEditModal((prev) => ({ ...prev, book: { ...prev.book, [field]: value } }));
+  };
+
+  const handleUpdateBook = async (e) => {
+    e.preventDefault();
+    const book = editModal.book;
+    // Validasyon (gerekirse eklenebilir)
+    try {
+      const response = await managementService.updateBook({
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        price: parseFloat(book.price),
+        image: book.image,
+        description: book.description,
+        category: book.category,
+        subcategory: book.subcategory,
+        publisher: book.publisher,
+        discountRate: parseFloat(book.discountRate),
+        bestseller: book.bestseller === 'evet' ? 1 : 0
+      });
+      if (response.status === 200) {
+        setToast({ type: 'success', message: 'Güncelleme başarılı' });
+        // Listeyi güncelle
+        setBooks((prev) => prev.map((b) => b.id === book.id ? { ...book, discountRate: parseFloat(book.discountRate), bestseller: book.bestseller === 'evet' ? 1 : 0 } : b));
+        setEditModal({ open: false, book: null });
+      } else {
+        setToast({ type: 'error', message: 'Bir hata oluştu' });
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Bir hata oluştu' });
+    }
+  };
 
   const renderDashboard = () => (
     <div style={{ padding: '20px' }}>
       <h2 style={{ color: '#1a7f37', marginBottom: '30px' }}>Genel Bilgiler</h2>
-      
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px' }}>
         <div style={{ 
           background: 'white', 
@@ -262,9 +341,8 @@ export default function AdminPanelScreen() {
           borderLeft: '4px solid #1a7f37'
         }}>
           <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>Toplam Kitap</h3>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: '#1a7f37' }}>0</p>
+          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: '#1a7f37' }}>{dashboardStats.totalBooks}</p>
         </div>
-        
         <div style={{ 
           background: 'white', 
           padding: '20px', 
@@ -273,7 +351,7 @@ export default function AdminPanelScreen() {
           borderLeft: '4px solid #2196f3'
         }}>
           <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>Toplam Kullanıcı</h3>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: '#2196f3' }}>0</p>
+          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: '#2196f3' }}>{dashboardStats.totalUsers}</p>
         </div>
       </div>
     </div>
@@ -326,7 +404,8 @@ export default function AdminPanelScreen() {
             boxSizing: 'border-box',
             marginBottom: 0
           }}
-          disabled
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
         />
       </div>
       <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
@@ -374,7 +453,7 @@ export default function AdminPanelScreen() {
                     fontWeight: 500,
                     cursor: 'pointer',
                     marginRight: '8px'
-                  }}>Düzenle</button>
+                  }} onClick={() => handleEditBook(book)}>Düzenle</button>
                   <button style={{
                     padding: '6px 14px',
                     backgroundColor: '#f44336',
@@ -384,7 +463,7 @@ export default function AdminPanelScreen() {
                     fontSize: '13px',
                     fontWeight: 500,
                     cursor: 'pointer'
-                  }}>Sil</button>
+                  }} onClick={() => handleDeleteBook(book.id)}>Sil</button>
                 </td>
               </tr>
             ))}
@@ -419,65 +498,196 @@ export default function AdminPanelScreen() {
                 category: '',
                 subcategory: '',
                 price: '',
-                image: ''
+                image: '',
+                description: '',
+                discount_Rate: '',
+                bestseller: ''
               });
               setShowAddModal(false);
             }} style={{ position: 'absolute', top: 18, right: 18, background: 'none', border: 'none', fontSize: 22, color: '#888', cursor: 'pointer' }}>&times;</button>
             <h2 style={{ color: '#1a7f37', marginBottom: 18, fontSize: '1.25rem' }}>Yeni Kitap Ekle</h2>
-            <form onSubmit={e => e.preventDefault()}>
+            <form onSubmit={async e => {
+              e.preventDefault();
+              // Validasyon: tüm alanlar dolu olmalı
+              if (!newBook.title || !newBook.author || !newBook.publisher || !newBook.category || !newBook.subcategory || !newBook.price || !newBook.image || !newBook.description || newBook.discount_Rate === '' || newBook.bestseller === '') {
+                alert('Lütfen tüm alanları doldurunuz!');
+                return;
+              }
+              try {
+                const bookData = {
+                  title: newBook.title,
+                  author: newBook.author,
+                  price: parseFloat(newBook.price),
+                  image: newBook.image,
+                  description: newBook.description,
+                  category: newBook.category,
+                  subcategory: newBook.subcategory,
+                  publisher: newBook.publisher,
+                  discount_Rate: parseFloat(newBook.discount_Rate),
+                  bestseller: newBook.bestseller === 'evet' ? 1 : 0
+                };
+                const response = await fetch('https://greenbooksapi-production.up.railway.app/api/ManagementPanel/add', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  },
+                  body: JSON.stringify(bookData)
+                });
+                if (response.status === 200) {
+                  setToast({ type: 'success', message: 'Ekleme başarılı' });
+                  setNewBook({
+                    title: '',
+                    author: '',
+                    publisher: '',
+                    category: '',
+                    subcategory: '',
+                    price: '',
+                    image: '',
+                    description: '',
+                    discount_Rate: '',
+                    bestseller: ''
+                  });
+                  setShowAddModal(false);
+                } else {
+                  setToast({ type: 'error', message: 'Bir hata oluştu' });
+                }
+              } catch (err) {
+                setToast({ type: 'error', message: 'Bir hata oluştu' });
+              }
+            }}>
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontWeight: 500 }}>Kitap Adı</label>
-                <input type="text" value={newBook.title} onChange={e => setNewBook(b => ({ ...b, title: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} placeholder="Kitap adı" />
+                <input type="text" value={newBook.title} onChange={e => setNewBook(b => ({ ...b, title: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} placeholder="Kitap adı" required />
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontWeight: 500 }}>Yazar</label>
-                <select value={newBook.author} onChange={e => setNewBook(b => ({ ...b, author: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }}>
-                  <option value="">Seçiniz</option>
-                  {allAuthors.map(a => <option key={a} value={a}>{a}</option>)}
-                </select>
+                <input type="text" value={newBook.author} onChange={e => setNewBook(b => ({ ...b, author: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} placeholder="Yazar adı" required />
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontWeight: 500 }}>Yayınevi</label>
-                <select value={newBook.publisher} onChange={e => setNewBook(b => ({ ...b, publisher: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }}>
-                  <option value="">Seçiniz</option>
-                  {allPublishers.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <input type="text" value={newBook.publisher} onChange={e => setNewBook(b => ({ ...b, publisher: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} placeholder="Yayınevi" required />
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontWeight: 500 }}>Kategori</label>
-                <select value={newBook.category} onChange={e => setNewBook(b => ({ ...b, category: e.target.value, subcategory: '' }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }}>
+                <select value={newBook.category} onChange={e => setNewBook(b => ({ ...b, category: e.target.value, subcategory: '' }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} required>
                   <option value="">Seçiniz</option>
                   {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontWeight: 500 }}>Tür</label>
-                <select value={newBook.subcategory} onChange={e => setNewBook(b => ({ ...b, subcategory: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} disabled={!newBook.category}>
+                <select value={newBook.subcategory} onChange={e => setNewBook(b => ({ ...b, subcategory: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} required disabled={!newBook.category}>
                   <option value="">Seçiniz</option>
                   {allSubcategories.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontWeight: 500 }}>Fiyat</label>
-                <input type="number" value={newBook.price} onChange={e => setNewBook(b => ({ ...b, price: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} placeholder="Fiyat (TL)" min="0" />
+                <input type="number" value={newBook.price} onChange={e => setNewBook(b => ({ ...b, price: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} placeholder="Fiyat (TL)" min="0" required />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>Ürün Fotoğrafı (Link)</label>
+                <input type="text" value={newBook.image} onChange={e => setNewBook(b => ({ ...b, image: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} placeholder="https://..." required />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>Açıklama</label>
+                <textarea value={newBook.description} onChange={e => setNewBook(b => ({ ...b, description: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4, minHeight: '80px', resize: 'vertical' }} placeholder="Kitap açıklaması..." required />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>İndirim Oranı (%)</label>
+                <input type="number" value={newBook.discount_Rate} onChange={e => setNewBook(b => ({ ...b, discount_Rate: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} placeholder="0" min="0" max="100" required />
               </div>
               <div style={{ marginBottom: 18 }}>
-                <label style={{ fontWeight: 500 }}>Ürün Fotoğrafı (Link)</label>
-                <input type="text" value={newBook.image} onChange={e => setNewBook(b => ({ ...b, image: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} placeholder="https://..." />
+                <label style={{ fontWeight: 500 }}>Çok Satan</label>
+                <select value={newBook.bestseller} onChange={e => setNewBook(b => ({ ...b, bestseller: e.target.value }))} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} required>
+                  <option value="">Seçiniz</option>
+                  <option value="evet">Evet</option>
+                  <option value="hayır">Hayır</option>
+                </select>
               </div>
-              <button type="button" style={{ width: '100%', padding: '12px', background: '#1a7f37', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 16, cursor: 'pointer' }} onClick={() => {
-                setNewBook({
-                  title: '',
-                  author: '',
-                  publisher: '',
-                  category: '',
-                  subcategory: '',
-                  price: '',
-                  image: ''
-                });
-                setShowAddModal(false);
-              }}>
-                Kaydet (Demo)
+              <button type="submit" style={{ width: '100%', padding: '12px', background: '#1a7f37', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 16, cursor: 'pointer' }}>
+                Kitap Ekle
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+      <GlobalToast toast={toast} onClose={() => setToast(null)} />
+      {deleteConfirm.open && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.13)', padding: 32, minWidth: 320, textAlign: 'center' }}>
+            <div style={{ fontSize: 18, color: '#222', marginBottom: 24 }}>Bu kitabı silmek istediğinize emin misiniz?</div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
+              <button onClick={confirmDelete} style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 24px', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Sil</button>
+              <button onClick={() => setDeleteConfirm({ open: false, id: null })} style={{ background: '#eee', color: '#333', border: 'none', borderRadius: 6, padding: '10px 24px', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Vazgeç</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editModal.open && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.13)', padding: 32, minWidth: 340, maxWidth: 420, width: '100%', position: 'relative' }}>
+            <button onClick={() => setEditModal({ open: false, book: null })} style={{ position: 'absolute', top: 18, right: 18, background: 'none', border: 'none', fontSize: 22, color: '#888', cursor: 'pointer' }}>&times;</button>
+            <h2 style={{ color: '#1a7f37', marginBottom: 18, fontSize: '1.25rem' }}>Kitap Düzenle</h2>
+            <form onSubmit={handleUpdateBook}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>Kitap Adı</label>
+                <input type="text" value={editModal.book.title} onChange={e => handleEditInputChange('title', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} required />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>Yazar</label>
+                <input type="text" value={editModal.book.author} onChange={e => handleEditInputChange('author', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} required />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>Yayınevi</label>
+                <input type="text" value={editModal.book.publisher} onChange={e => handleEditInputChange('publisher', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} required />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>Kategori</label>
+                <select value={editModal.book.category} onChange={e => handleEditInputChange('category', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} required>
+                  <option value="">Seçiniz</option>
+                  {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>Tür</label>
+                <select value={editModal.book.subcategory} onChange={e => handleEditInputChange('subcategory', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} required disabled={!editModal.book.category}>
+                  <option value="">Seçiniz</option>
+                  {allSubcategoriesEdit.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>Fiyat</label>
+                <input type="number" value={editModal.book.price} onChange={e => handleEditInputChange('price', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} min="0" required />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>Ürün Fotoğrafı (Link)</label>
+                <input type="text" value={editModal.book.image} onChange={e => handleEditInputChange('image', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} required />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>Açıklama</label>
+                <textarea value={editModal.book.description} onChange={e => handleEditInputChange('description', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4, minHeight: '80px', resize: 'vertical' }} required />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 500 }}>İndirim Oranı (%)</label>
+                <input type="number" value={editModal.book.discountRate} onChange={e => handleEditInputChange('discountRate', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} min="0" max="100" required />
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontWeight: 500 }}>Çok Satan</label>
+                <select value={editModal.book.bestseller === 1 ? 'evet' : 'hayır'} onChange={e => handleEditInputChange('bestseller', e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1.5px solid #e0e0e0', fontSize: 15, marginTop: 4 }} required>
+                  <option value="hayır">Hayır</option>
+                  <option value="evet">Evet</option>
+                </select>
+              </div>
+              <button type="submit" style={{ width: '100%', padding: '12px', background: '#1a7f37', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 16, cursor: 'pointer' }}>
+                Kaydet
               </button>
             </form>
           </div>
@@ -1206,6 +1416,7 @@ export default function AdminPanelScreen() {
           </div>
         )}
       </div>
+      <GlobalToast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 } 

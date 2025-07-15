@@ -65,6 +65,25 @@ namespace GreenBooksAPI.Services
 
         }
 
+        public async Task<IEnumerable<GeneralResponse>> General()
+        {
+
+            var sql = @"
+                 SELECT 
+                    (SELECT COUNT(*) FROM users) AS total_users,
+                    (SELECT COUNT(*) FROM books) AS total_books;
+                                                                    ";
+
+
+            using var conn = _context.CreateConnection();
+            var counts = await conn.QueryAsync<GeneralResponse>(sql);
+
+            return counts;
+
+
+
+        }
+
 
         public async Task<IEnumerable<Book>> FilterBooksAsync(string? category, string? subcategory, string? author, string? publisher)
         {
