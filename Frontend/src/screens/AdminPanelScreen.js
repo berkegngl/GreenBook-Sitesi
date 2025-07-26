@@ -265,6 +265,42 @@ export default function AdminPanelScreen() {
     }
   }, [activeTab]);
 
+  // Kategoriler sekmesine geçildiğinde kitapları çek
+  useEffect(() => {
+    if (activeTab === 'categories') {
+      bookService.getAllBooks()
+        .then(data => setBooks(data))
+        .catch(() => setToast({ type: 'error', message: 'Kategoriler yüklenemedi' }));
+    }
+  }, [activeTab]);
+
+  // Türler sekmesine geçildiğinde kitapları çek
+  useEffect(() => {
+    if (activeTab === 'type') {
+      bookService.getAllBooks()
+        .then(data => setBooks(data))
+        .catch(() => setToast({ type: 'error', message: 'Türler yüklenemedi' }));
+    }
+  }, [activeTab]);
+
+  // Yayınevleri sekmesine geçildiğinde kitapları çek
+  useEffect(() => {
+    if (activeTab === 'publishers') {
+      bookService.getAllBooks()
+        .then(data => setBooks(data))
+        .catch(() => setToast({ type: 'error', message: 'Yayınevleri yüklenemedi' }));
+    }
+  }, [activeTab]);
+
+  // Yazarlar sekmesine geçildiğinde kitapları çek
+  useEffect(() => {
+    if (activeTab === 'authors') {
+      bookService.getAllBooks()
+        .then(data => setBooks(data))
+        .catch(() => setToast({ type: 'error', message: 'Yazarlar yüklenemedi' }));
+    }
+  }, [activeTab]);
+
   const handleLogout = () => {
     localStorage.removeItem('user');
     if (setUser) setUser(null);
@@ -996,7 +1032,7 @@ export default function AdminPanelScreen() {
                 </thead>
                 <tbody>
                   {allCategories.map((category, index) => {
-                    const bookCount = booksData.filter(book => book.category === category).length;
+                    const bookCount = books.filter(book => book.category === category).length;
                     return (
                       <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '14px 16px', color: '#333', fontWeight: 500 }}>{category}</td>
@@ -1051,7 +1087,7 @@ export default function AdminPanelScreen() {
                 </thead>
                 <tbody>
                   {allTypes.map((type, index) => {
-                    const bookCount = booksData.filter(book => book.subcategory === type).length;
+                    const bookCount = books.filter(book => book.subcategory === type).length;
                     return (
                       <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '14px 16px', color: '#333', fontWeight: 500 }}>{type}</td>
@@ -1106,7 +1142,7 @@ export default function AdminPanelScreen() {
                 </thead>
                 <tbody>
                   {allPublishers.map((publisher, index) => {
-                    const bookCount = booksData.filter(book => book.publisher === publisher).length;
+                    const bookCount = books.filter(book => book.publisher === publisher).length;
                     return (
                       <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '14px 16px', color: '#333', fontWeight: 500 }}>{publisher}</td>
@@ -1161,7 +1197,7 @@ export default function AdminPanelScreen() {
                 </thead>
                 <tbody>
                   {allAuthors.map((author, index) => {
-                    const bookCount = booksData.filter(book => book.author === author).length;
+                    const bookCount = books.filter(book => book.author === author).length;
                     return (
                       <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '14px 16px', color: '#333', fontWeight: 500 }}>{author}</td>

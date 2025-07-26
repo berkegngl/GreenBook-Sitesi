@@ -53,12 +53,28 @@ export async function fetchBooksBySearch(query) {
 }
 
 export async function fetchBookById(id) {
-  const response = await fetch(`${BASE_URL}/Books/${id}`);
-  const data = await response.json();
-  if (!response.ok) {
+  console.log('[BOOK][REQUEST] /Books/getById', { id });
+  try {
+    // Backend'de /Books/{id} endpoint'i yok, bu yüzden tüm kitapları çekip filtreliyoruz
+    const response = await fetch(`${BASE_URL}/Books/AllBooks`);
+    if (!response.ok) {
+      throw new Error('Kitaplar alınamadı');
+    }
+    const allBooks = await response.json();
+    console.log('[BOOK][RESPONSE] /Books/getById - all books count:', allBooks.length);
+    
+    // ID'ye göre kitabı bul
+    const book = allBooks.find(book => book.id === parseInt(id));
+    if (!book) {
+      throw new Error(`ID ${id} olan kitap bulunamadı`);
+    }
+    
+    console.log('[BOOK][RESPONSE] /Books/getById - found book:', book);
+    return book;
+  } catch (error) {
+    console.error('[BOOK][ERROR] /Books/getById:', error);
     throw new Error('Kitap detayı alınamadı');
   }
-  return data;
 }
 
 export const bookService = {
