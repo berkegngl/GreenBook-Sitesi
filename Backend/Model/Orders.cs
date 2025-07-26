@@ -7,6 +7,7 @@ public class Orders
     public string Soyisim { get; set; } 
     public string UrunlerJson { get; set; } 
     public decimal ToplamTutar { get; set; }
-    public string Adres { get; set; } 
+    public string Adres { get; set; }
+    public DateTime OrderTime { get; set; }
 }
 

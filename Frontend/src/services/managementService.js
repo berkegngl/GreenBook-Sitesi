@@ -131,8 +131,23 @@ export const managementService = {
   },
   // Siparişleri listele
   async getOrders() {
-    const response = await fetch(`${BASE_URL}/Order/ListOrders`);
-    if (!response.ok) throw new Error('Siparişler alınamadı');
-    return await response.json();
+    console.log('[ORDER][REQUEST] /Order/ListOrders');
+    try {
+      const response = await fetch(`${BASE_URL}/Order/ListOrders`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      const data = await response.json();
+      console.log('[ORDER][RESPONSE] /Order/ListOrders', data);
+      if (!response.ok) {
+        throw new Error('Siparişler alınamadı');
+      }
+      return data;
+    } catch (error) {
+      console.error('❌ Sipariş listesi alma hatası:', error);
+      throw error;
+    }
   },
 }; 

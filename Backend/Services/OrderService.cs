@@ -47,7 +47,10 @@ VALUES
         public async Task<IEnumerable<Orders>> ListOrdersAsync()
         {
 
-            var sql = " SELECT * FROM orders";
+            var sql = @" SELECT siparis_no AS SiparisNo,
+ isim,soyisim,urunler AS UrunlerJson, toplam_tutar AS ToplamTutar ,
+ adres, order_time AS OrderTime
+FROM orders";
 
             using var conn = _context.CreateConnection();
             var orders = await conn.QueryAsync<Orders>(sql);

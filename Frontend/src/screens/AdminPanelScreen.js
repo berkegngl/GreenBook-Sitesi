@@ -14,6 +14,7 @@ export default function AdminPanelScreen() {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const [bookSort, setBookSort] = useState({ field: '', direction: 'asc' });
+  const [orderSort, setOrderSort] = useState({ field: '', direction: 'asc' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [newType, setNewType] = useState('');
@@ -130,8 +131,55 @@ export default function AdminPanelScreen() {
     return sorted;
   }, [bookSort, books]);
 
+  const sortedOrders = React.useMemo(() => {
+    if (!orderSort.field) return orders;
+    const sorted = [...orders].sort((a, b) => {
+      let aValue = a[orderSort.field];
+      let bValue = b[orderSort.field];
+      
+      // Özel sıralama kuralları
+      if (orderSort.field === 'musteri') {
+        aValue = `${a.isim} ${a.soyisim}`.toLowerCase();
+        bValue = `${b.isim} ${b.soyisim}`.toLowerCase();
+      } else if (orderSort.field === 'urunler') {
+        try {
+          const aUrunler = JSON.parse(a.urunlerJson || '[]');
+          const bUrunler = JSON.parse(b.urunlerJson || '[]');
+          aValue = Array.isArray(aUrunler) ? aUrunler.join(', ').toLowerCase() : '';
+          bValue = Array.isArray(bUrunler) ? bUrunler.join(', ').toLowerCase() : '';
+        } catch {
+          aValue = '';
+          bValue = '';
+        }
+      } else if (orderSort.field === 'tarih') {
+        aValue = new Date(a.orderTime || 0);
+        bValue = new Date(b.orderTime || 0);
+      } else if (orderSort.field === 'toplamTutar') {
+        aValue = parseFloat(a.toplamTutar || 0);
+        bValue = parseFloat(b.toplamTutar || 0);
+      } else if (orderSort.field === 'siparisNo') {
+        aValue = parseInt(a.siparisNo || 0);
+        bValue = parseInt(b.siparisNo || 0);
+      }
+      
+      if (aValue < bValue) return orderSort.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return orderSort.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [orderSort, orders]);
+
   const handleBookSort = (field) => {
     setBookSort(prev => {
+      if (prev.field === field) {
+        return { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { field, direction: 'asc' };
+    });
+  };
+
+  const handleOrderSort = (field) => {
+    setOrderSort(prev => {
       if (prev.field === field) {
         return { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
       }
@@ -770,11 +818,11 @@ export default function AdminPanelScreen() {
           <thead>
             <tr style={{ backgroundColor: '#f5f5f5' }}>
               <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Sipariş No</th>
-              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Kullanıcı</th>
-              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Kitap Adları</th>
-              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Tutar</th>
+              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Müşteri</th>
+              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Ürünler</th>
+              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Toplam Tutar</th>
               <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Tarih</th>
-              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Durum</th>
+              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Adres</th>
             </tr>
           </thead>
           <tbody>
@@ -787,24 +835,44 @@ export default function AdminPanelScreen() {
               </tr>
             ) : (
               orders.map(order => {
-                // Kitap adlarını çöz
-                let kitaplar = '';
-                if (order.urunler) {
+                // JSON string'i parse et
+                let urunler = [];
+                try {
+                  if (order.urunlerJson) {
+                    urunler = JSON.parse(order.urunlerJson);
+                  }
+                } catch (e) {
+                  console.error('Ürünler JSON parse hatası:', e);
+                  urunler = [order.urunlerJson || 'Bilinmeyen ürün'];
+                }
+                
+                // Tarih formatla
+                let tarihText = '';
+                if (order.orderTime) {
                   try {
-                    const arr = JSON.parse(order.urunler);
-                    kitaplar = Array.isArray(arr) ? arr.join(', ') : String(arr);
-                  } catch {
-                    kitaplar = order.urunler;
+                    const tarih = new Date(order.orderTime);
+                    tarihText = tarih.toLocaleString('tr-TR', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    });
+                  } catch (e) {
+                    tarihText = 'Tarih bilgisi yok';
                   }
                 }
+                
                 return (
-                  <tr key={order.siparis_no}>
-                    <td>#{order.siparis_no}</td>
-                    <td>{order.isim} {order.soyisim}</td>
-                    <td>{kitaplar}</td>
-                    <td>{order.toplam_tutar} TL</td>
-                    <td>{order.order_time ? new Date(order.order_time).toLocaleString() : ''}</td>
-                    <td>Tamamlandı</td>
+                  <tr key={order.siparisNo}>
+                    <td style={{ padding: '14px', fontWeight: 'bold', color: '#1a7f37' }}>#{order.siparisNo}</td>
+                    <td style={{ padding: '14px' }}>{order.isim} {order.soyisim}</td>
+                    <td style={{ padding: '14px' }}>
+                      {Array.isArray(urunler) ? urunler.join(', ') : urunler}
+                    </td>
+                    <td style={{ padding: '14px', fontWeight: 'bold', color: '#1a7f37' }}>{order.toplamTutar} TL</td>
+                    <td style={{ padding: '14px', fontSize: '13px', color: '#666' }}>{tarihText}</td>
+                    <td style={{ padding: '14px', fontSize: '13px', color: '#666' }}>{order.adres}</td>
                   </tr>
                 );
               })
@@ -1234,30 +1302,130 @@ export default function AdminPanelScreen() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f5f5f5' }}>
-                    <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Kullanıcı</th>
-                    <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Sipariş No</th>
-                    <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Tutar</th>
-                    <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Tarih</th>
-                    <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Durum</th>
+                    <th 
+                      style={{ 
+                        padding: '14px', 
+                        textAlign: 'left', 
+                        borderBottom: '1px solid #eee',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                      onClick={() => handleOrderSort('siparisNo')}
+                    >
+                      Sipariş No {orderSort.field === 'siparisNo' ? (orderSort.direction === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th 
+                      style={{ 
+                        padding: '14px', 
+                        textAlign: 'left', 
+                        borderBottom: '1px solid #eee',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                      onClick={() => handleOrderSort('musteri')}
+                    >
+                      Müşteri {orderSort.field === 'musteri' ? (orderSort.direction === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th 
+                      style={{ 
+                        padding: '14px', 
+                        textAlign: 'left', 
+                        borderBottom: '1px solid #eee',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                      onClick={() => handleOrderSort('urunler')}
+                    >
+                      Ürünler {orderSort.field === 'urunler' ? (orderSort.direction === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th 
+                      style={{ 
+                        padding: '14px', 
+                        textAlign: 'left', 
+                        borderBottom: '1px solid #eee',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                      onClick={() => handleOrderSort('toplamTutar')}
+                    >
+                      Toplam Tutar {orderSort.field === 'toplamTutar' ? (orderSort.direction === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th 
+                      style={{ 
+                        padding: '14px', 
+                        textAlign: 'left', 
+                        borderBottom: '1px solid #eee',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                      onClick={() => handleOrderSort('tarih')}
+                    >
+                      Tarih {orderSort.field === 'tarih' ? (orderSort.direction === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th 
+                      style={{ 
+                        padding: '14px', 
+                        textAlign: 'left', 
+                        borderBottom: '1px solid #eee',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                      onClick={() => handleOrderSort('adres')}
+                    >
+                      Adres {orderSort.field === 'adres' ? (orderSort.direction === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.length === 0 ? (
+                  {sortedOrders.length === 0 ? (
                     <tr>
-                      <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#888', fontSize: '15px' }}>
+                      <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#888', fontSize: '15px' }}>
                         Hiç sipariş yok.
                       </td>
                     </tr>
                   ) : (
-                    orders.map(order => (
-                      <tr key={order.id}>
-                        <td>{order.isim} {order.soyisim}</td>
-                        <td>#{order.id}</td>
-                        <td>{order.toplam_tutar} TL</td>
-                        <td>{order.order_time ? new Date(order.order_time).toLocaleString() : ''}</td>
-                        <td>Tamamlandı</td>
-                      </tr>
-                    ))
+                    sortedOrders.map(order => {
+                      // JSON string'i parse et
+                      let urunler = [];
+                      try {
+                        if (order.urunlerJson) {
+                          urunler = JSON.parse(order.urunlerJson);
+                        }
+                      } catch (e) {
+                        console.error('Ürünler JSON parse hatası:', e);
+                        urunler = [order.urunlerJson || 'Bilinmeyen ürün'];
+                      }
+                      
+                      // Tarih formatla
+                      let tarihText = '';
+                      if (order.orderTime) {
+                        try {
+                          const tarih = new Date(order.orderTime);
+                          tarihText = tarih.toLocaleString('tr-TR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          });
+                        } catch (e) {
+                          tarihText = 'Tarih bilgisi yok';
+                        }
+                      }
+                      
+                      return (
+                        <tr key={order.siparisNo}>
+                          <td style={{ padding: '14px', fontWeight: 'bold', color: '#1a7f37' }}>#{order.siparisNo}</td>
+                          <td style={{ padding: '14px' }}>{order.isim} {order.soyisim}</td>
+                          <td style={{ padding: '14px' }}>
+                            {Array.isArray(urunler) ? urunler.join(', ') : urunler}
+                          </td>
+                          <td style={{ padding: '14px', fontWeight: 'bold', color: '#1a7f37' }}>{order.toplamTutar} TL</td>
+                          <td style={{ padding: '14px', fontSize: '13px', color: '#666' }}>{tarihText}</td>
+                          <td style={{ padding: '14px', fontSize: '13px', color: '#666' }}>{order.adres}</td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
