@@ -1,5 +1,6 @@
 // src/services/bookService.js
-const BASE_URL = 'https://greenbooksapi-production.up.railway.app/api';
+const BASE_URL = 'http://localhost:5266/api';
+
 
 export async function fetchBestsellers() {
   console.log('[BOOK][REQUEST] /Books/bestsellers');

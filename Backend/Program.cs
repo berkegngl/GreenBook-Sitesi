@@ -23,6 +23,7 @@ builder.Services.AddSingleton<DapperContext>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IManagementPanel, ManagementPanel>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 
 
 

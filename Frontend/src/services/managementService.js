@@ -1,5 +1,6 @@
 // Yönetim paneli için API servisleri
-const BASE_URL = 'https://greenbooksapi-production.up.railway.app/api';
+const BASE_URL = 'http://localhost:5266/api';
+
 
 // Yönetim paneli genel bilgiler (istatistikler) servisi
 export async function getDashboardStats() {
@@ -36,7 +37,6 @@ export const managementService = {
         discount_Rate: parseFloat(bookData.discount_Rate || 0),
         bestseller: bookData.bestseller === 'evet' ? 1 : 0
       };
-
       const response = await fetch(`${BASE_URL}/ManagementPanel/add`, {
         method: 'POST',
         headers: {
@@ -45,15 +45,15 @@ export const managementService = {
         },
         body: JSON.stringify(requestBody)
       });
-      
-      const data = await response.json();
-      console.log('[MANAGEMENT][RESPONSE] /ManagementPanel/add', data);
-      
-      if (!response.ok) {
-        throw new Error('Kitap eklenemedi');
+      let data = null;
+      const text = await response.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
       }
-      
-      return data;
+      console.log('[MANAGEMENT][RESPONSE] /ManagementPanel/add', data);
+      return { status: response.status, ok: response.ok, data };
     } catch (error) {
       console.error('❌ Kitap ekleme hatası:', error);
       throw error;
@@ -67,9 +67,15 @@ export const managementService = {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
-    const data = await response.json();
+    let data = null;
+    const text = await response.text();
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
     console.log('[MANAGEMENT][RESPONSE] /ManagementPanel/delete/' + id, data);
-    return response;
+    return { status: response.status, ok: response.ok, data };
   },
   async updateBook(book) {
     console.log('[MANAGEMENT][REQUEST] /ManagementPanel/update', book);
@@ -81,9 +87,52 @@ export const managementService = {
       },
       body: JSON.stringify(book)
     });
-    const data = await response.json();
+    let data = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
     console.log('[MANAGEMENT][RESPONSE] /ManagementPanel/update', data);
-    return response;
+    return { status: response.status, ok: response.ok, data };
   },
   getDashboardStats,
+  // Sipariş ekle
+  async addOrder(orderData) {
+    console.log('[ORDER][REQUEST] /Order/TakeOrder', orderData);
+    try {
+      const requestBody = {
+        Isim: orderData.isim,
+        Soyisim: orderData.soyisim,
+        UrunlerJson: JSON.stringify(orderData.urunler),
+        ToplamTutar: orderData.toplam_tutar,
+        Adres: orderData.adres
+      };
+      const response = await fetch(`${BASE_URL}/Order/TakeOrder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+      let data = null;
+      const text = await response.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+      console.log('[ORDER][RESPONSE] /Order/TakeOrder', data);
+      return { status: response.status, ok: response.ok, data };
+    } catch (error) {
+      console.error('❌ Sipariş ekleme hatası:', error);
+      throw error;
+    }
+  },
+  // Siparişleri listele
+  async getOrders() {
+    const response = await fetch(`${BASE_URL}/Order/ListOrders`);
+    if (!response.ok) throw new Error('Siparişler alınamadı');
+    return await response.json();
+  },
 }; 

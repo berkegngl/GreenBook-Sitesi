@@ -257,6 +257,14 @@ export default function AdminPanelScreen() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab === 'lastorders') {
+      managementService.getOrders()
+        .then(setOrders)
+        .catch(() => setOrders([]));
+    }
+  }, [activeTab]);
+
   const handleLogout = () => {
     localStorage.removeItem('user');
     if (setUser) setUser(null);
@@ -273,7 +281,14 @@ export default function AdminPanelScreen() {
     setDeleteConfirm({ open: false, id: null });
     try {
       const response = await managementService.deleteBook(id);
-      if (response.status === 200) {
+      if (
+        response && (
+          response.ok ||
+          response.status === 200 ||
+          (response.data && typeof response.data === 'string' && response.data.toLowerCase().includes('başarı')) ||
+          (response.data && typeof response.data === 'object' && response.data.message && response.data.message.toLowerCase().includes('başarı'))
+        )
+      ) {
         setToast({ type: 'success', message: 'Silme başarılı' });
         setBooks(prev => prev.filter(book => book.id !== id));
       } else {
@@ -316,7 +331,14 @@ export default function AdminPanelScreen() {
         discountRate: parseFloat(book.discountRate),
         bestseller: book.bestseller === 'evet' ? 1 : 0
       });
-      if (response.status === 200) {
+      if (
+        response && (
+          response.ok ||
+          response.status === 200 ||
+          (response.data && typeof response.data === 'string' && response.data.toLowerCase().includes('başarı')) ||
+          (response.data && typeof response.data === 'object' && response.data.message && response.data.message.toLowerCase().includes('başarı'))
+        )
+      ) {
         setToast({ type: 'success', message: 'Güncelleme başarılı' });
         // Listeyi güncelle
         setBooks((prev) => prev.map((b) => b.id === book.id ? { ...book, discountRate: parseFloat(book.discountRate), bestseller: book.bestseller === 'evet' ? 1 : 0 } : b));
@@ -526,15 +548,15 @@ export default function AdminPanelScreen() {
                   discount_Rate: parseFloat(newBook.discount_Rate),
                   bestseller: newBook.bestseller === 'evet' ? 1 : 0
                 };
-                const response = await fetch('https://greenbooksapi-production.up.railway.app/api/ManagementPanel/add', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                  },
-                  body: JSON.stringify(bookData)
-                });
-                if (response.status === 200) {
+                const response = await managementService.addBook(bookData);
+                if (
+                  response && (
+                    response.ok ||
+                    response.status === 200 ||
+                    (typeof response.data === 'string' && response.data.toLowerCase().includes('başarı')) ||
+                    (typeof response.data === 'object' && response.data.message && response.data.message.toLowerCase().includes('başarı'))
+                  )
+                ) {
                   setToast({ type: 'success', message: 'Ekleme başarılı' });
                   setNewBook({
                     title: '',
@@ -711,59 +733,46 @@ export default function AdminPanelScreen() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: '#f5f5f5' }}>
-              <th style={{ padding: '15px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Sipariş No</th>
-              <th style={{ padding: '15px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Müşteri</th>
-              <th style={{ padding: '15px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Tutar</th>
-              <th style={{ padding: '15px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Durum</th>
-              <th style={{ padding: '15px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Tarih</th>
-              <th style={{ padding: '15px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>İşlemler</th>
+              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Sipariş No</th>
+              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Kullanıcı</th>
+              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Kitap Adları</th>
+              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Tutar</th>
+              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Tarih</th>
+              <th style={{ padding: '14px', textAlign: 'left', borderBottom: '1px solid #eee' }}>Durum</th>
             </tr>
           </thead>
           <tbody>
-            {orders.map(order => (
-              <tr key={order.id} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={{ padding: '15px' }}>#{order.id}</td>
-                <td style={{ padding: '15px' }}>{order.customer}</td>
-                <td style={{ padding: '15px' }}>₺{order.total}</td>
-                <td style={{ padding: '15px' }}>
-                  <span style={{ 
-                    padding: '2px 8px', 
-                    borderRadius: '12px', 
-                    fontSize: '12px',
-                    backgroundColor: order.status === 'Tamamlandı' ? '#e8f5e8' : '#fff3e0',
-                    color: order.status === 'Tamamlandı' ? '#2e7d32' : '#f57c00'
-                  }}>
-                    {order.status}
-                  </span>
-                </td>
-                <td style={{ padding: '15px' }}>{order.date}</td>
-                <td style={{ padding: '15px' }}>
-                  <button style={{
-                    padding: '5px 10px',
-                    backgroundColor: '#2196f3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    marginRight: '5px',
-                    fontSize: '12px'
-                  }}>
-                    Detay
-                  </button>
-                  <button style={{
-                    padding: '5px 10px',
-                    backgroundColor: '#4caf50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px'
-                  }}>
-                    Güncelle
-                  </button>
+            {console.log('Gelen orders:', orders)}
+            {orders.length === 0 ? (
+              <tr>
+                <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#888', fontSize: '15px' }}>
+                  Hiç sipariş yok.
                 </td>
               </tr>
-            ))}
+            ) : (
+              orders.map(order => {
+                // Kitap adlarını çöz
+                let kitaplar = '';
+                if (order.urunler) {
+                  try {
+                    const arr = JSON.parse(order.urunler);
+                    kitaplar = Array.isArray(arr) ? arr.join(', ') : String(arr);
+                  } catch {
+                    kitaplar = order.urunler;
+                  }
+                }
+                return (
+                  <tr key={order.siparis_no}>
+                    <td>#{order.siparis_no}</td>
+                    <td>{order.isim} {order.soyisim}</td>
+                    <td>{kitaplar}</td>
+                    <td>{order.toplam_tutar} TL</td>
+                    <td>{order.order_time ? new Date(order.order_time).toLocaleString() : ''}</td>
+                    <td>Tamamlandı</td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -847,7 +856,7 @@ export default function AdminPanelScreen() {
               gap: '10px'
             }}
           >
-            Kategori Yönetimi
+            Kategoriler
           </button>
           <button
             onClick={() => setActiveTab('type')}
@@ -865,7 +874,7 @@ export default function AdminPanelScreen() {
               gap: '10px'
             }}
           >
-            Tür Yönetimi
+            Türler
           </button>
           <button
             onClick={() => setActiveTab('publisher')}
@@ -883,7 +892,7 @@ export default function AdminPanelScreen() {
               gap: '10px'
             }}
           >
-            Yayınevi Yönetimi
+            Yayınevleri
           </button>
           <button
             onClick={() => setActiveTab('author')}
@@ -901,25 +910,7 @@ export default function AdminPanelScreen() {
               gap: '10px'
             }}
           >
-            Yazar Yönetimi
-          </button>
-          <button
-            onClick={() => setActiveTab('users')}
-            style={{
-              width: '100%',
-              padding: '12px 20px',
-              backgroundColor: activeTab === 'users' ? 'rgba(255,255,255,0.2)' : 'transparent',
-              color: 'white',
-              border: 'none',
-              textAlign: 'left',
-              cursor: 'pointer',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}
-          >
-            Kullanıcılar
+            Yazarlar
           </button>
           <button
             onClick={() => setActiveTab('lastorders')}
@@ -982,49 +973,7 @@ export default function AdminPanelScreen() {
         {activeTab === 'books' && renderBooks()}
         {activeTab === 'category' && (
           <div style={{ padding: '20px' }}>
-            <h2 style={{ color: '#1a7f37', marginBottom: '24px' }}>Kategori Yönetimi</h2>
-            
-            {/* Kategori Ekleme Formu */}
-            <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: '24px', marginBottom: '24px' }}>
-              <h3 style={{ color: '#333', marginBottom: '16px', fontSize: '1.1rem' }}>Yeni Kategori Ekle</h3>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: 500, fontSize: '14px', color: '#555', marginBottom: '6px', display: 'block' }}>Kategori Adı</label>
-                  <input 
-                    type="text" 
-                    value={newCategory} 
-                    onChange={e => setNewCategory(e.target.value)} 
-                    onKeyPress={e => e.key === 'Enter' && handleAddCategory()}
-                    style={{ 
-                      width: '100%', 
-                      padding: '10px 12px', 
-                      borderRadius: '6px', 
-                      border: '1.5px solid #e0e0e0', 
-                      fontSize: '15px',
-                      outline: 'none'
-                    }} 
-                    placeholder="Kategori adını giriniz" 
-                  />
-                </div>
-                <button 
-                  onClick={handleAddCategory}
-                  disabled={!newCategory.trim() || allCategories.includes(newCategory.trim())}
-                  style={{ 
-                    padding: '10px 20px', 
-                    background: '#1a7f37', 
-                    color: '#fff', 
-                    border: 'none', 
-                    borderRadius: '6px', 
-                    fontWeight: 600, 
-                    fontSize: '14px', 
-                    cursor: 'pointer',
-                    opacity: (!newCategory.trim() || allCategories.includes(newCategory.trim())) ? 0.5 : 1
-                  }}
-                >
-                  Ekle
-                </button>
-              </div>
-            </div>
+            <h2 style={{ color: '#1a7f37', marginBottom: '24px' }}>Kategoriler</h2>
             
             {/* Kategori Listesi */}
             <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
@@ -1079,71 +1028,8 @@ export default function AdminPanelScreen() {
         )}
         {activeTab === 'type' && (
           <div style={{ padding: '20px' }}>
-            <h2 style={{ color: '#1a7f37', marginBottom: '24px' }}>Tür Yönetimi</h2>
-            
-            {/* Tür Ekleme Formu */}
-            <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: '24px', marginBottom: '24px' }}>
-              <h3 style={{ color: '#333', marginBottom: '16px', fontSize: '1.1rem' }}>Yeni Tür Ekle</h3>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: 500, fontSize: '14px', color: '#555', marginBottom: '6px', display: 'block' }}>Kategori</label>
-                  <select 
-                    value={selectedCategoryForType} 
-                    onChange={e => setSelectedCategoryForType(e.target.value)}
-                    style={{ 
-                      width: '100%', 
-                      padding: '10px 12px', 
-                      borderRadius: '6px', 
-                      border: '1.5px solid #e0e0e0', 
-                      fontSize: '15px',
-                      outline: 'none',
-                      background: '#fff'
-                    }}
-                  >
-                    <option value="">Kategori seçiniz</option>
-                    {allCategories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: 500, fontSize: '14px', color: '#555', marginBottom: '6px', display: 'block' }}>Tür Adı</label>
-                  <input 
-                    type="text" 
-                    value={newType} 
-                    onChange={e => setNewType(e.target.value)} 
-                    onKeyPress={e => e.key === 'Enter' && handleAddType()}
-                    style={{ 
-                      width: '100%', 
-                      padding: '10px 12px', 
-                      borderRadius: '6px', 
-                      border: '1.5px solid #e0e0e0', 
-                      fontSize: '15px',
-                      outline: 'none'
-                    }} 
-                    placeholder="Tür adını giriniz" 
-                  />
-                </div>
-                <button 
-                  onClick={handleAddType}
-                  disabled={!newType.trim() || !selectedCategoryForType || allTypes.includes(newType.trim())}
-                  style={{ 
-                    padding: '10px 20px', 
-                    background: '#1a7f37', 
-                    color: '#fff', 
-                    border: 'none', 
-                    borderRadius: '6px', 
-                    fontWeight: 600, 
-                    fontSize: '14px', 
-                    cursor: 'pointer',
-                    opacity: (!newType.trim() || !selectedCategoryForType || allTypes.includes(newType.trim())) ? 0.5 : 1
-                  }}
-                >
-                  Ekle
-                </button>
-              </div>
-            </div>
-            
+            <h2 style={{ color: '#1a7f37', marginBottom: '24px' }}>Türler</h2>
+            {/* Tür Ekleme Formu kaldırıldı */}
             {/* Tür Listesi */}
             <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
               <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
@@ -1197,50 +1083,8 @@ export default function AdminPanelScreen() {
         )}
         {activeTab === 'publisher' && (
           <div style={{ padding: '20px' }}>
-            <h2 style={{ color: '#1a7f37', marginBottom: '24px' }}>Yayınevi Yönetimi</h2>
-            
-            {/* Yayınevi Ekleme Formu */}
-            <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: '24px', marginBottom: '24px' }}>
-              <h3 style={{ color: '#333', marginBottom: '16px', fontSize: '1.1rem' }}>Yeni Yayınevi Ekle</h3>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: 500, fontSize: '14px', color: '#555', marginBottom: '6px', display: 'block' }}>Yayınevi Adı</label>
-                  <input 
-                    type="text" 
-                    value={newPublisher} 
-                    onChange={e => setNewPublisher(e.target.value)} 
-                    onKeyPress={e => e.key === 'Enter' && handleAddPublisher()}
-                    style={{ 
-                      width: '100%', 
-                      padding: '10px 12px', 
-                      borderRadius: '6px', 
-                      border: '1.5px solid #e0e0e0', 
-                      fontSize: '15px',
-                      outline: 'none'
-                    }} 
-                    placeholder="Yayınevi adını giriniz" 
-                  />
-                </div>
-                <button 
-                  onClick={handleAddPublisher}
-                  disabled={!newPublisher.trim() || allPublishers.includes(newPublisher.trim())}
-                  style={{ 
-                    padding: '10px 20px', 
-                    background: '#1a7f37', 
-                    color: '#fff', 
-                    border: 'none', 
-                    borderRadius: '6px', 
-                    fontWeight: 600, 
-                    fontSize: '14px', 
-                    cursor: 'pointer',
-                    opacity: (!newPublisher.trim() || allPublishers.includes(newPublisher.trim())) ? 0.5 : 1
-                  }}
-                >
-                  Ekle
-                </button>
-              </div>
-            </div>
-            
+            <h2 style={{ color: '#1a7f37', marginBottom: '24px' }}>Yayınevleri</h2>
+            {/* Yayınevi Ekleme Formu kaldırıldı */}
             {/* Yayınevi Listesi */}
             <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
               <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
@@ -1294,50 +1138,8 @@ export default function AdminPanelScreen() {
         )}
         {activeTab === 'author' && (
           <div style={{ padding: '20px' }}>
-            <h2 style={{ color: '#1a7f37', marginBottom: '24px' }}>Yazar Yönetimi</h2>
-            
-            {/* Yazar Ekleme Formu */}
-            <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: '24px', marginBottom: '24px' }}>
-              <h3 style={{ color: '#333', marginBottom: '16px', fontSize: '1.1rem' }}>Yeni Yazar Ekle</h3>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: 500, fontSize: '14px', color: '#555', marginBottom: '6px', display: 'block' }}>Yazar Adı</label>
-                  <input 
-                    type="text" 
-                    value={newAuthor} 
-                    onChange={e => setNewAuthor(e.target.value)} 
-                    onKeyPress={e => e.key === 'Enter' && handleAddAuthor()}
-                    style={{ 
-                      width: '100%', 
-                      padding: '10px 12px', 
-                      borderRadius: '6px', 
-                      border: '1.5px solid #e0e0e0', 
-                      fontSize: '15px',
-                      outline: 'none'
-                    }} 
-                    placeholder="Yazar adını giriniz" 
-                  />
-                </div>
-                <button 
-                  onClick={handleAddAuthor}
-                  disabled={!newAuthor.trim() || allAuthors.includes(newAuthor.trim())}
-                  style={{ 
-                    padding: '10px 20px', 
-                    background: '#1a7f37', 
-                    color: '#fff', 
-                    border: 'none', 
-                    borderRadius: '6px', 
-                    fontWeight: 600, 
-                    fontSize: '14px', 
-                    cursor: 'pointer',
-                    opacity: (!newAuthor.trim() || allAuthors.includes(newAuthor.trim())) ? 0.5 : 1
-                  }}
-                >
-                  Ekle
-                </button>
-              </div>
-            </div>
-            
+            <h2 style={{ color: '#1a7f37', marginBottom: '24px' }}>Yazarlar</h2>
+            {/* Yazar Ekleme Formu kaldırıldı */}
             {/* Yazar Listesi */}
             <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
               <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
@@ -1389,7 +1191,6 @@ export default function AdminPanelScreen() {
             </div>
           </div>
         )}
-        {activeTab === 'users' && renderUsers()}
         {activeTab === 'lastorders' && (
           <div style={{ padding: '20px' }}>
             <h2 style={{ color: '#1a7f37', marginBottom: '20px' }}>Son Siparişler</h2>
@@ -1405,11 +1206,23 @@ export default function AdminPanelScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#888', fontSize: '15px' }}>
-                      Hiç sipariş yok.
-                    </td>
-                  </tr>
+                  {orders.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#888', fontSize: '15px' }}>
+                        Hiç sipariş yok.
+                      </td>
+                    </tr>
+                  ) : (
+                    orders.map(order => (
+                      <tr key={order.id}>
+                        <td>{order.isim} {order.soyisim}</td>
+                        <td>#{order.id}</td>
+                        <td>{order.toplam_tutar} TL</td>
+                        <td>{order.order_time ? new Date(order.order_time).toLocaleString() : ''}</td>
+                        <td>Tamamlandı</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

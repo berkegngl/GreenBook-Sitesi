@@ -9,4 +9,6 @@ public interface IManagementPanel
     Task<int> UpdateBookAsync(BookUpdateRequest book);
     Task<int> DeleteBookAsync(int id);
 
+    
+
 }

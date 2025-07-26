@@ -1,5 +1,6 @@
 // src/services/authService.js
-const BASE_URL = 'https://greenbooksapi-production.up.railway.app/api';
+const BASE_URL = 'http://localhost:5266/api';
+
 
 export async function login({ username, password }) {
   console.log('[AUTH][REQUEST] /auth/login', { username });

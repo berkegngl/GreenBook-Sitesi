@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$USER_HOME$/Desktop/GreenBook-2025_07_25_16_27_03-dump.sql" dialect="PostgreSQL" />
+    <file url="file://$USER_HOME$/GreenBook-2025_07_25_20_16_12-dump.sql" dialect="PostgreSQL" />
+  </component>
+</project>

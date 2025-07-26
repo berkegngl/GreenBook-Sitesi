@@ -48,7 +48,7 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow
         });
 
-        return null; // null dönerse başarı demek
+        return null; 
     }
 
 

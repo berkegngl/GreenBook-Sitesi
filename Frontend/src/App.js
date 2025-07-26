@@ -18,6 +18,7 @@ import BookDetailScreen from './screens/BookDetailScreen';
 import AdminPanelScreen from './screens/AdminPanelScreen';
 import megaCategories from './constants/megaCategories';
 import { fetchAllBooks, fetchBooksBySearch } from './services/bookService';
+import { managementService } from './services/managementService';
 
 const LoginForm = React.memo(function LoginForm({ onClose, onLoginSuccess, showToast }) {
   const [mode, setMode] = useState('login'); // 'login' veya 'register'
@@ -453,7 +454,7 @@ function Toast({ message, type = 'success', onClose }) {
 
 
 
-function Navbar({ cartCount, cart, onRemoveFromCart, onClearCart, categories, selectedCategory, setSelectedCategory, search, setSearch, onMegaMenu, megaOpen, setMegaOpen, anchorRef, bestSellers, newReleases, handleSelectSubcat, handleAddToCart, handleToggleFavorite, favorites, showLoginForm, setShowLoginForm, user, onLogout, setFilters, filters }) {
+function Navbar({ cartCount, cart, onRemoveFromCart, onClearCart, categories, selectedCategory, setSelectedCategory, search, setSearch, onMegaMenu, megaOpen, setMegaOpen, anchorRef, bestSellers, newReleases, handleSelectSubcat, handleAddToCart, handleToggleFavorite, favorites, showLoginForm, setShowLoginForm, user, onLogout, setFilters, filters, showOrderModal, setShowOrderModal, orderInfo, setOrderInfo }) {
   const [toast, setToast] = React.useState({ show: false, message: '' });
   const [currentSection, setCurrentSection] = React.useState('campaigns');
   const navigate = useNavigate();
@@ -815,9 +816,7 @@ function Navbar({ cartCount, cart, onRemoveFromCart, onClearCart, categories, se
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button
-                          onClick={() => {
-                            navigate('/cart');
-                          }}
+                          onClick={() => setShowOrderModal(true)}
                           style={{
                             flex: 1,
                             padding: '12px 16px',
@@ -1673,6 +1672,10 @@ function AppRoutes(props) {
           onLogout={props.handleLogout}
           setFilters={props.setFilters}
           filters={props.filters}
+          showOrderModal={props.showOrderModal}
+          setShowOrderModal={props.setShowOrderModal}
+          orderInfo={props.orderInfo}
+          setOrderInfo={props.setOrderInfo}
         />
       )}
       {props.showLoginForm && (
@@ -1886,6 +1889,10 @@ function App() {
   const shuffled = books.slice().sort(() => 0.5 - Math.random());
   const newReleases = shuffled.slice(0, 5);
 
+  // 1. Add state for modal visibility and form fields
+  const [showOrderModal, setShowOrderModal] = React.useState(false);
+  const [orderInfo, setOrderInfo] = React.useState({ isim: '', soyisim: '', adres: '' });
+
   return (
     <Router>
       <AppRoutes
@@ -1926,7 +1933,105 @@ function App() {
         allAuthors={allAuthors}
         allPublishers={allPublishers}
         showToast={showToast}
+        showOrderModal={showOrderModal}
+        setShowOrderModal={setShowOrderModal}
+        orderInfo={orderInfo}
+        setOrderInfo={setOrderInfo}
       />
+      {showOrderModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.3)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 0, minWidth: 600, boxShadow: '0 2px 16px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
+            {/* Left: Form */}
+            <div style={{ flex: 1, padding: 32 }}>
+              <h2 style={{ marginBottom: 20 }}>Teslimat Bilgileri</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <input
+                  type="text"
+                  placeholder="İsim"
+                  value={user?.firstName || ''}
+                  readOnly
+                  style={{ padding: 10, borderRadius: 6, border: '1.5px solid #e0e0e0', fontSize: 15, background: '#f5f5f5' }}
+                />
+                <input
+                  type="text"
+                  placeholder="Soyisim"
+                  value={user?.lastName || ''}
+                  readOnly
+                  style={{ padding: 10, borderRadius: 6, border: '1.5px solid #e0e0e0', fontSize: 15, background: '#f5f5f5' }}
+                />
+                <textarea
+                  placeholder="Adres"
+                  value={orderInfo.adres}
+                  onChange={e => setOrderInfo({ ...orderInfo, adres: e.target.value })}
+                  style={{ padding: 10, borderRadius: 6, border: '1.5px solid #e0e0e0', fontSize: 15, minHeight: 60 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'flex-end' }}>
+                <button onClick={() => setShowOrderModal(false)} style={{ padding: '8px 16px', background: '#eee', border: 'none', borderRadius: 6, fontWeight: 500, cursor: 'pointer' }}>İptal</button>
+                <button
+                  onClick={async () => {
+                    if (!orderInfo.adres.trim()) return;
+                    setShowOrderModal(false);
+                    try {
+                      const orderPayload = {
+                        isim: user?.firstName || '',
+                        soyisim: user?.lastName || '',
+                        adres: orderInfo.adres,
+                        toplam_tutar: cart.reduce((sum, item) => sum + Number(item.price), 0),
+                        urunler: cart.map(item => item.title)
+                      };
+                      const result = await managementService.addOrder(orderPayload);
+                      // Hem HTTP kodunu hem de backend'den dönen mesajı kontrol et
+                      if (
+                        (result && result.ok) ||
+                        (result.data && (
+                          (typeof result.data === 'string' && result.data.toLowerCase().includes('başarı')) ||
+                          (typeof result.data === 'object' && (result.data.success || result.data.status === 'success'))
+                        ))
+                      ) {
+                        setCart([]);
+                        setOrderInfo({ isim: '', soyisim: '', adres: '' });
+                        showToast('Siparişiniz başarıyla alındı!', 'success');
+                      } else {
+                        showToast('Sipariş gönderilemedi!', 'error');
+                      }
+                    } catch (err) {
+                      showToast('Sipariş gönderilemedi!', 'error');
+                    }
+                  }}
+                  style={{ padding: '8px 16px', background: '#1a7f37', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: (!orderInfo.adres.trim()) ? 'not-allowed' : 'pointer', opacity: (!orderInfo.adres.trim()) ? 0.6 : 1 }}
+                  disabled={!orderInfo.adres.trim()}
+                >
+                  Siparişi Onayla
+                </button>
+              </div>
+            </div>
+            {/* Right: Cart summary */}
+            <div style={{ width: 280, background: '#f8f8f8', borderLeft: '1px solid #eee', padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <h3 style={{ margin: 0, marginBottom: 12, fontSize: 18 }}>Sepetiniz</h3>
+              <div style={{ flex: 1, overflowY: 'auto', marginBottom: 12 }}>
+                {cart.map(item => (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <img src={item.image || 'https://via.placeholder.com/40x56?text=Kitap'} alt={item.title} style={{ width: 40, height: 56, objectFit: 'cover', borderRadius: 4 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500, fontSize: 14 }}>{item.title}</div>
+                      <div style={{ fontSize: 12, color: '#666' }}>{item.author}</div>
+                      <div style={{ fontSize: 13, color: '#1a7f37', fontWeight: 600 }}>{item.price} TL</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ borderTop: '1px solid #e0e0e0', paddingTop: 10, fontWeight: 600, fontSize: 16, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Toplam:</span>
+                <span style={{ color: '#1a7f37' }}>{cart.reduce((sum, item) => sum + Number(item.price), 0)} TL</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Router>
   );
 }
