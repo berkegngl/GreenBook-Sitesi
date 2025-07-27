@@ -1,8 +1,4 @@
-// Yönetim paneli için API servisleri
 const BASE_URL = 'http://localhost:5266/api';
-
-
-// Yönetim paneli genel bilgiler (istatistikler) servisi
 export async function getDashboardStats() {
   console.log('[MANAGEMENT][REQUEST] /Books/General');
   const response = await fetch(`${BASE_URL}/Books/General`, {
@@ -21,7 +17,6 @@ export async function getDashboardStats() {
 }
 
 export const managementService = {
-  // Yeni kitap ekle
   async addBook(bookData) {
     console.log('[MANAGEMENT][REQUEST] /ManagementPanel/add', bookData);
     try {
@@ -97,7 +92,6 @@ export const managementService = {
     return { status: response.status, ok: response.ok, data };
   },
   getDashboardStats,
-  // Sipariş ekle
   async addOrder(orderData) {
     console.log('[ORDER][REQUEST] /Order/TakeOrder', orderData);
     try {
@@ -129,7 +123,6 @@ export const managementService = {
       throw error;
     }
   },
-  // Siparişleri listele
   async getOrders() {
     console.log('[ORDER][REQUEST] /Order/ListOrders');
     try {

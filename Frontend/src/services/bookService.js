@@ -1,4 +1,3 @@
-// src/services/bookService.js
 const BASE_URL = 'http://localhost:5266/api';
 
 
@@ -55,7 +54,6 @@ export async function fetchBooksBySearch(query) {
 export async function fetchBookById(id) {
   console.log('[BOOK][REQUEST] /Books/getById', { id });
   try {
-    // Backend'de /Books/{id} endpoint'i yok, bu yüzden tüm kitapları çekip filtreliyoruz
     const response = await fetch(`${BASE_URL}/Books/AllBooks`);
     if (!response.ok) {
       throw new Error('Kitaplar alınamadı');
@@ -63,7 +61,6 @@ export async function fetchBookById(id) {
     const allBooks = await response.json();
     console.log('[BOOK][RESPONSE] /Books/getById - all books count:', allBooks.length);
     
-    // ID'ye göre kitabı bul
     const book = allBooks.find(book => book.id === parseInt(id));
     if (!book) {
       throw new Error(`ID ${id} olan kitap bulunamadı`);

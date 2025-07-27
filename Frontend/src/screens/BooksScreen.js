@@ -21,7 +21,6 @@ export default function BooksScreen({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Filtreler değişince API'den kitapları çek
   useEffect(() => {
     setLoading(true);
     fetchBooksByFilter({
@@ -40,7 +39,6 @@ export default function BooksScreen({
       });
   }, [filters.category, filters.subcategory, filters.author, filters.publisher]);
 
-  // allSubcategories: megaCategories'den bul
   const allSubcategories = React.useMemo(() => {
     if (!filters.category) return [];
     const found = megaCategories.find(cat => cat.name === filters.category);
@@ -48,7 +46,6 @@ export default function BooksScreen({
     return [];
   }, [filters.category]);
 
-  // Gösterilecek kitaplar: filtreli API'den gelenler
   const booksToShow = filteredBooks;
 
   return (

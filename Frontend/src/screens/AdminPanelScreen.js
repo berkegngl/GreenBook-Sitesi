@@ -37,7 +37,6 @@ export default function AdminPanelScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const searchTimeout = useRef();
 
-  // Sistemdeki mevcut verilerden dinamik listeler oluştur
   const booksData = [
     { id: 1, title: 'Kürk Mantolu Madonna', author: 'Sabahattin Ali', price: 80, originalPrice: 101, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Modern Türk edebiyatının başyapıtlarından.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'Yapı Kredi Yayınları' },
     { id: 2, title: 'Tutunamayanlar', author: 'Oğuz Atay', price: 120, originalPrice: 144, image: 'https://covers.openlibrary.org/b/id/8235116-L.jpg', description: 'Türk edebiyatının kült romanı.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'İletişim Yayınları' },
@@ -91,10 +90,8 @@ export default function AdminPanelScreen() {
     { id: 50, title: 'Vakıf', author: 'Isaac Asimov', price: 100, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Bilim kurgu serisi.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'İthaki Yayınları' },
   ];
 
-  // Türkçe alfabesine göre sıralama fonksiyonu
   const turkishSort = (a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' });
 
-  // Dinamik listeler oluştur
   const allCategories = Array.from(new Set(books.map(b => b.category).filter(Boolean)))
     .filter(cat => cat !== 'Yayınevleri' && cat !== 'Yazarlar')
     .sort(turkishSort);
@@ -103,17 +100,13 @@ export default function AdminPanelScreen() {
   const allPublishers = Array.from(new Set(books.map(b => b.publisher).filter(Boolean))).sort(turkishSort);
   const allTypes = Array.from(new Set(books.map(b => b.subcategory).filter(Boolean))).sort(turkishSort);
   
-  // Seçili kategoriye göre türler (subcategory)
   const allSubcategories = React.useMemo(() => {
     if (!newBook.category) return [];
-    // megaCategories'den bul
     const found = megaCategories.find(cat => cat.name === newBook.category);
     if (found) return found.sub;
-    // Yoksa kitaplardan çıkar
     return Array.from(new Set(books.filter(b => b.category === newBook.category).map(b => b.subcategory).filter(Boolean))).sort();
   }, [newBook.category, books]);
 
-  // Edit modalı için seçili kategoriye göre türler (subcategory)
   const allSubcategoriesEdit = React.useMemo(() => {
     if (!editModal.book || !editModal.book.category) return [];
     const found = megaCategories.find(cat => cat.name === editModal.book.category);
@@ -137,7 +130,6 @@ export default function AdminPanelScreen() {
       let aValue = a[orderSort.field];
       let bValue = b[orderSort.field];
       
-      // Özel sıralama kuralları
       if (orderSort.field === 'musteri') {
         aValue = `${a.isim} ${a.soyisim}`.toLowerCase();
         bValue = `${b.isim} ${b.soyisim}`.toLowerCase();
@@ -252,9 +244,6 @@ export default function AdminPanelScreen() {
     }
   };
 
-  // Kullanıcı sıralama fonksiyonu ve ilgili state/fonksiyonları kaldırıyorum
-
-  // Admin kontrolü
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (!savedUser) {
@@ -271,7 +260,6 @@ export default function AdminPanelScreen() {
     setUser(userData);
   }, [navigate]);
 
-  // Kitap Yönetimi sekmesine tıklandığında kitapları çek
   useEffect(() => {
     if (activeTab === 'books') {
       if (searchTerm.trim() === '') {
@@ -313,7 +301,6 @@ export default function AdminPanelScreen() {
     }
   }, [activeTab]);
 
-  // Kategoriler sekmesine geçildiğinde kitapları çek
   useEffect(() => {
     if (activeTab === 'categories') {
       bookService.getAllBooks()
@@ -322,7 +309,6 @@ export default function AdminPanelScreen() {
     }
   }, [activeTab]);
 
-  // Türler sekmesine geçildiğinde kitapları çek
   useEffect(() => {
     if (activeTab === 'type') {
       bookService.getAllBooks()
@@ -331,7 +317,6 @@ export default function AdminPanelScreen() {
     }
   }, [activeTab]);
 
-  // Yayınevleri sekmesine geçildiğinde kitapları çek
   useEffect(() => {
     if (activeTab === 'publishers') {
       bookService.getAllBooks()
@@ -340,7 +325,6 @@ export default function AdminPanelScreen() {
     }
   }, [activeTab]);
 
-  // Yazarlar sekmesine geçildiğinde kitapları çek
   useEffect(() => {
     if (activeTab === 'authors') {
       bookService.getAllBooks()
@@ -400,8 +384,7 @@ export default function AdminPanelScreen() {
   const handleUpdateBook = async (e) => {
     e.preventDefault();
     const book = editModal.book;
-    // Validasyon (gerekirse eklenebilir)
-    try {
+          try {
       const response = await managementService.updateBook({
         id: book.id,
         title: book.title,
@@ -424,7 +407,6 @@ export default function AdminPanelScreen() {
         )
       ) {
         setToast({ type: 'success', message: 'Güncelleme başarılı' });
-        // Listeyi güncelle
         setBooks((prev) => prev.map((b) => b.id === book.id ? { ...book, discountRate: parseFloat(book.discountRate), bestseller: book.bestseller === 'evet' ? 1 : 0 } : b));
         setEditModal({ open: false, book: null });
       } else {
@@ -614,8 +596,7 @@ export default function AdminPanelScreen() {
             <h2 style={{ color: '#1a7f37', marginBottom: 18, fontSize: '1.25rem' }}>Yeni Kitap Ekle</h2>
             <form onSubmit={async e => {
               e.preventDefault();
-              // Validasyon: tüm alanlar dolu olmalı
-              if (!newBook.title || !newBook.author || !newBook.publisher || !newBook.category || !newBook.subcategory || !newBook.price || !newBook.image || !newBook.description || newBook.discount_Rate === '' || newBook.bestseller === '') {
+                          if (!newBook.title || !newBook.author || !newBook.publisher || !newBook.category || !newBook.subcategory || !newBook.price || !newBook.image || !newBook.description || newBook.discount_Rate === '' || newBook.bestseller === '') {
                 alert('Lütfen tüm alanları doldurunuz!');
                 return;
               }
@@ -826,7 +807,6 @@ export default function AdminPanelScreen() {
             </tr>
           </thead>
           <tbody>
-            {console.log('Gelen orders:', orders)}
             {orders.length === 0 ? (
               <tr>
                 <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#888', fontSize: '15px' }}>
@@ -835,7 +815,6 @@ export default function AdminPanelScreen() {
               </tr>
             ) : (
               orders.map(order => {
-                // JSON string'i parse et
                 let urunler = [];
                 try {
                   if (order.urunlerJson) {
@@ -846,7 +825,6 @@ export default function AdminPanelScreen() {
                   urunler = [order.urunlerJson || 'Bilinmeyen ürün'];
                 }
                 
-                // Tarih formatla
                 let tarihText = '';
                 if (order.orderTime) {
                   try {
@@ -1385,7 +1363,6 @@ export default function AdminPanelScreen() {
                     </tr>
                   ) : (
                     sortedOrders.map(order => {
-                      // JSON string'i parse et
                       let urunler = [];
                       try {
                         if (order.urunlerJson) {
@@ -1396,7 +1373,6 @@ export default function AdminPanelScreen() {
                         urunler = [order.urunlerJson || 'Bilinmeyen ürün'];
                       }
                       
-                      // Tarih formatla
                       let tarihText = '';
                       if (order.orderTime) {
                         try {

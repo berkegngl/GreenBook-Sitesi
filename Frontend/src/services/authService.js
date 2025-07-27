@@ -1,4 +1,3 @@
-// src/services/authService.js
 const BASE_URL = 'http://localhost:5266/api';
 
 
