@@ -37,58 +37,7 @@ export default function AdminPanelScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const searchTimeout = useRef();
 
-  const booksData = [
-    { id: 1, title: 'Kürk Mantolu Madonna', author: 'Sabahattin Ali', price: 80, originalPrice: 101, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Modern Türk edebiyatının başyapıtlarından.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'Yapı Kredi Yayınları' },
-    { id: 2, title: 'Tutunamayanlar', author: 'Oğuz Atay', price: 120, originalPrice: 144, image: 'https://covers.openlibrary.org/b/id/8235116-L.jpg', description: 'Türk edebiyatının kült romanı.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'İletişim Yayınları' },
-    { id: 3, title: 'Çile', author: 'Necip Fazıl Kısakürek', price: 60, originalPrice: 75, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Türk şiirinin önemli eserlerinden.', category: 'Edebiyat Kitapları', subcategory: 'Şiir', publisher: 'Büyük Doğu Yayınları' },
-    { id: 4, title: 'Saatleri Ayarlama Enstitüsü', author: 'Ahmet Hamdi Tanpınar', price: 95, originalPrice: 119, image: 'https://covers.openlibrary.org/b/id/240727-L.jpg', description: 'Modern Türk romanı.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'Dergah Yayınları' },
-    { id: 5, title: 'Kuyucaklı Yusuf', author: 'Sabahattin Ali', price: 70, originalPrice: 91, image: 'https://img.kitapyurdu.com/v1/getImage/fn:1105919/wh:true/wi:220', description: 'Klasik Türk romanı.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'Yapı Kredi Yayınları' },
-    { id: 6, title: 'Sefiller', author: 'Victor Hugo', price: 110, originalPrice: 137, image: 'https://covers.openlibrary.org/b/id/153541-L.jpg', description: 'Dünya edebiyatının başyapıtı.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'İş Bankası Kültür Yayınları' },
-    { id: 7, title: 'Suç ve Ceza', author: 'Fyodor Dostoyevski', price: 105, originalPrice: 127, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Rus edebiyatının en önemli romanlarından.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'İş Bankası Kültür Yayınları' },
-    { id: 8, title: 'Anna Karenina', author: 'Lev Tolstoy', price: 130, originalPrice: 156, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Dünya klasiklerinden.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'Can Yayınları' },
-    { id: 9, title: 'İnce Memed', author: 'Yaşar Kemal', price: 90, originalPrice: 117, image: 'https://covers.openlibrary.org/b/id/8235116-L.jpg', description: 'Türk edebiyatının destansı romanı.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'Yapı Kredi Yayınları' },
-    { id: 10, title: 'Aşk ve Gurur', author: 'Jane Austen', price: 85, originalPrice: 110, image: 'https://covers.openlibrary.org/b/id/240727-L.jpg', description: 'İngiliz edebiyatının başyapıtı.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'Can Yayınları' },
-    { id: 11, title: 'TYT Türkçe Soru Bankası', author: 'Kolektif', price: 55, image: 'https://covers.openlibrary.org/b/id/240727-L.jpg', description: 'TYT için kapsamlı Türkçe soru bankası.', category: 'Eğitim Kitapları', subcategory: 'TYT-AYT Kitapları', publisher: 'Pegem Akademi' },
-    { id: 12, title: 'AYT Matematik Denemeleri', author: 'Kolektif', price: 65, image: 'https://covers.openlibrary.org/b/id/8231856-L.jpg', description: 'AYT için matematik denemeleri.', category: 'Eğitim Kitapları', subcategory: 'TYT-AYT Kitapları', publisher: 'Palme Yayınevi' },
-    { id: 13, title: 'KPSS Genel Kültür', author: 'Kolektif', price: 70, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'KPSS için genel kültür kitabı.', category: 'Eğitim Kitapları', subcategory: 'KPSS Kitapları', publisher: 'Pegem Akademi' },
-    { id: 14, title: 'LGS Matematik', author: 'Kolektif', price: 45, image: 'https://covers.openlibrary.org/b/id/8235116-L.jpg', description: 'LGS için matematik kitabı.', category: 'Eğitim Kitapları', subcategory: 'LGS Kitapları', publisher: 'Palme Yayınevi' },
-    { id: 15, title: 'DGS Matematik', author: 'Kolektif', price: 60, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'DGS için matematik kitabı.', category: 'Eğitim Kitapları', subcategory: 'DGS Kitapları', publisher: 'Pegem Akademi' },
-    { id: 16, title: 'Felsefe Tarihi', author: 'Ahmet Cevizci', price: 85, image: 'https://covers.openlibrary.org/b/id/240727-L.jpg', description: 'Felsefe tarihi üzerine kapsamlı kitap.', category: 'Felsefe Kitapları', subcategory: 'Felsefe Tarihi', publisher: 'Say Yayınları' },
-    { id: 17, title: 'Din Felsefesi', author: 'Kolektif', price: 75, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Din felsefesi üzerine.', category: 'Felsefe Kitapları', subcategory: 'Din Felsefesi', publisher: 'İz Yayıncılık' },
-    { id: 18, title: 'Küçük Prens', author: 'Antoine de Saint-Exupéry', price: 40, image: 'https://covers.openlibrary.org/b/id/8235116-L.jpg', description: 'Dünya çocuk edebiyatının başyapıtı.', category: 'Çocuk Kitapları', subcategory: 'Roman ve Öyküler', publisher: 'Can Yayınları' },
-    { id: 19, title: 'Pinokyo', author: 'Carlo Collodi', price: 35, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Klasik çocuk masalı.', category: 'Çocuk Kitapları', subcategory: 'Masallar', publisher: 'Can Yayınları' },
-    { id: 20, title: 'Alice Harikalar Diyarında', author: 'Lewis Carroll', price: 45, image: 'https://covers.openlibrary.org/b/id/240727-L.jpg', description: 'Fantastik çocuk romanı.', category: 'Çocuk Kitapları', subcategory: 'Roman ve Öyküler', publisher: 'İş Bankası Kültür Yayınları' },
-    { id: 21, title: 'Kırmızı Başlıklı Kız', author: 'Grimm Kardeşler', price: 25, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Klasik masal.', category: 'Çocuk Kitapları', subcategory: 'Masallar', publisher: 'Tudem Yayınları' },
-    { id: 22, title: 'Uyuyan Güzel', author: 'Grimm Kardeşler', price: 25, image: 'https://covers.openlibrary.org/b/id/8235116-L.jpg', description: 'Klasik masal.', category: 'Çocuk Kitapları', subcategory: 'Masallar', publisher: 'Tudem Yayınları' },
-    { id: 23, title: 'Pamuk Prenses', author: 'Grimm Kardeşler', price: 25, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Klasik masal.', category: 'Çocuk Kitapları', subcategory: 'Masallar', publisher: 'Tudem Yayınları' },
-    { id: 24, title: 'Anadolu Rehberi', author: 'Kolektif', price: 85, image: 'https://covers.openlibrary.org/b/id/240727-L.jpg', description: 'Anadolu için rehber kitap.', category: 'Gezi ve Rehber Kitapları', subcategory: 'Rehber', publisher: 'Boyut Yayın Grubu' },
-    { id: 25, title: 'Kapadokya Rehberi', author: 'Kolektif', price: 65, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Kapadokya için rehber kitap.', category: 'Gezi ve Rehber Kitapları', subcategory: 'Rehber', publisher: 'Boyut Yayın Grubu' },
-    { id: 26, title: 'İstanbul Rehberi', author: 'Kolektif', price: 75, image: 'https://covers.openlibrary.org/b/id/153541-L.jpg', description: 'İstanbul için rehber kitap.', category: 'Gezi ve Rehber Kitapları', subcategory: 'Rehber', publisher: 'Boyut Yayın Grubu' },
-    { id: 27, title: 'Dünya Gezi Kitabı', author: 'Kolektif', price: 95, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Dünya genelinde gezi önerileri.', category: 'Gezi ve Rehber Kitapları', subcategory: 'Gezi', publisher: 'Lonely Planet Türkiye' },
-    { id: 28, title: 'Beslenme ve Diyet', author: 'Kolektif', price: 50, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Sağlıklı yaşam için beslenme.', category: 'Sağlık Kitapları', subcategory: 'Beslenme', publisher: 'Nobel Akademik Yayıncılık' },
-    { id: 29, title: 'Aile Sağlığı', author: 'Kolektif', price: 60, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Aile sağlığı üzerine bilgiler.', category: 'Sağlık Kitapları', subcategory: 'Aile Sağlığı', publisher: 'Hayykitap' },
-    { id: 30, title: 'Çocuk Gelişimi', author: 'Kolektif', price: 55, image: 'https://covers.openlibrary.org/b/id/8235116-L.jpg', description: 'Çocuk gelişimi üzerine.', category: 'Sağlık Kitapları', subcategory: 'Çocuk Gelişimi', publisher: 'Remzi Kitabevi' },
-    { id: 31, title: 'Kişisel Gelişim 101', author: 'Kolektif', price: 45, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Kişisel gelişim için temel bilgiler.', category: 'İnsan ve Toplum Kitapları', subcategory: 'Kişisel Gelişim', publisher: 'Destek Yayınları' },
-    { id: 32, title: 'Kültür ve Sanat', author: 'Kolektif', price: 70, image: 'https://covers.openlibrary.org/b/id/240727-L.jpg', description: 'Kültür ve sanat üzerine.', category: 'İnsan ve Toplum Kitapları', subcategory: 'Kültür', publisher: 'İş Bankası Kültür Yayınları' },
-    { id: 33, title: 'Popüler Kültür', author: 'Kolektif', price: 55, image: 'https://covers.openlibrary.org/b/id/8235116-L.jpg', description: 'Popüler kültür üzerine.', category: 'İnsan ve Toplum Kitapları', subcategory: 'Popüler Kültür', publisher: 'Destek Yayınları' },
-    { id: 34, title: 'Yunan Mitolojisi', author: 'Kolektif', price: 80, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Yunan mitolojisi üzerine.', category: 'İnanç Kitapları ve Mitolojiler', subcategory: 'Mitolojiler', publisher: 'İş Bankası Kültür Yayınları' },
-    { id: 35, title: 'Dinler Tarihi', author: 'Kolektif', price: 90, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Dinler tarihi üzerine.', category: 'İnanç Kitapları ve Mitolojiler', subcategory: 'Dinler Tarihi', publisher: 'İz Yayıncılık' },
-    { id: 36, title: 'İslam Tarihi', author: 'Kolektif', price: 85, image: 'https://covers.openlibrary.org/b/id/240727-L.jpg', description: 'İslam tarihi üzerine.', category: 'İnanç Kitapları ve Mitolojiler', subcategory: 'İslam Kitapları', publisher: 'İz Yayıncılık' },
-    { id: 37, title: 'Genel Psikoloji', author: 'Kolektif', price: 75, image: 'https://covers.openlibrary.org/b/id/8235116-L.jpg', description: 'Genel psikoloji üzerine.', category: 'Psikoloji Kitapları', subcategory: 'Genel Psikoloji', publisher: 'Remzi Kitabevi' },
-    { id: 38, title: 'Çocuk Psikolojisi', author: 'Kolektif', price: 65, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Çocuk psikolojisi üzerine.', category: 'Psikoloji Kitapları', subcategory: 'Çocuk Psikolojisi', publisher: 'Remzi Kitabevi' },
-    { id: 39, title: 'Eğitim Psikolojisi', author: 'Kolektif', price: 70, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Eğitim psikolojisi üzerine.', category: 'Psikoloji Kitapları', subcategory: 'Eğitim Psikolojisi', publisher: 'Pegem Akademi' },
-    { id: 40, title: 'Hukuk Üzerine', author: 'Kolektif', price: 85, image: 'https://covers.openlibrary.org/b/id/240727-L.jpg', description: 'Hukuk üzerine genel bilgiler.', category: 'Hukuk Kitapları', subcategory: 'Hukuk Üzerine', publisher: 'Seçkin Yayıncılık' },
-    { id: 41, title: 'Hukuk Ders Kitabı', author: 'Kolektif', price: 95, image: 'https://covers.openlibrary.org/b/id/8235116-L.jpg', description: 'Hukuk ders kitabı.', category: 'Hukuk Kitapları', subcategory: 'Ders Kitapları', publisher: 'Seçkin Yayıncılık' },
-    { id: 42, title: 'Kanun ve Uygulama', author: 'Kolektif', price: 80, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Kanun ve uygulama üzerine.', category: 'Hukuk Kitapları', subcategory: 'Kanun ve Uygulama', publisher: 'Seçkin Yayıncılık' },
-    { id: 43, title: 'Can Yayınları Seçkisi', author: 'Can Yayınları', price: 70, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Can Yayınları\'ndan seçki.', category: 'Yayınevleri', subcategory: 'Can Yayınları', publisher: 'Can Yayınları' },
-    { id: 44, title: 'Çocuk Kitapları', author: 'Artemis Yayınları', price: 60, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Artemis Yayınları\'ndan çocuk kitapları.', category: 'Yayınevleri', subcategory: 'Artemis Yayınları', publisher: 'Artemis Yayınları' },
-    { id: 45, title: 'Biyografi Seçkisi', author: 'Sel Yayıncılık', price: 75, image: 'https://covers.openlibrary.org/b/id/240727-L.jpg', description: 'Sel Yayıncılık\'tan biyografi kitapları.', category: 'Yayınevleri', subcategory: 'Sel Yayıncılık', publisher: 'Sel Yayıncılık' },
-    { id: 46, title: 'Kürk Mantolu Madonna', author: 'Sabahattin Ali', price: 80, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Sabahattin Ali\'den başyapıt.', category: 'Yazarlar', subcategory: 'Sabahattin Ali', publisher: 'Yapı Kredi Yayınları' },
-    { id: 47, title: 'Simyacı', author: 'Paulo Coelho', price: 95, image: 'https://covers.openlibrary.org/b/id/291479-M.jpg', description: 'Paulo Coelho\'dan Simyacı.', category: 'Yazarlar', subcategory: 'Paulo Coelho', publisher: 'Can Yayınları' },
-    { id: 48, title: '1984', author: 'George Orwell', price: 120, image: 'https://covers.openlibrary.org/b/id/153541-L.jpg', description: 'George Orwell\'dan 1984.', category: 'Yazarlar', subcategory: 'George Orwell', publisher: 'Can Yayınları' },
-    { id: 49, title: 'Dune', author: 'Frank Herbert', price: 110, image: 'https://covers.openlibrary.org/b/id/11153223-L.jpg', description: 'Bilim kurgu klasiği.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'İthaki Yayınları' },
-    { id: 50, title: 'Vakıf', author: 'Isaac Asimov', price: 100, image: 'https://covers.openlibrary.org/b/id/10594765-L.jpg', description: 'Bilim kurgu serisi.', category: 'Edebiyat Kitapları', subcategory: 'Roman', publisher: 'İthaki Yayınları' },
-  ];
+
 
   const turkishSort = (a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' });
 
@@ -181,23 +130,22 @@ export default function AdminPanelScreen() {
 
   const handleAddCategory = () => {
     if (newCategory.trim() && !allCategories.includes(newCategory.trim())) {
-      // Gerçek uygulamada burada API çağrısı yapılacak
+      
       console.log('Yeni kategori eklendi:', newCategory.trim());
       setNewCategory('');
     }
   };
 
   const handleDeleteCategory = (category) => {
-    const bookCount = booksData.filter(book => book.category === category).length;
+    const bookCount = books.filter(book => book.category === category).length;
     if (bookCount === 0) {
-      // Gerçek uygulamada burada API çağrısı yapılacak
       console.log('Kategori silindi:', category);
     }
   };
 
   const handleAddType = () => {
     if (newType.trim() && selectedCategoryForType && !allTypes.includes(newType.trim())) {
-      // Gerçek uygulamada burada API çağrısı yapılacak
+      
       console.log('Yeni tür eklendi:', newType.trim(), 'kategori:', selectedCategoryForType);
       setNewType('');
       setSelectedCategoryForType('');
@@ -205,41 +153,38 @@ export default function AdminPanelScreen() {
   };
 
   const handleDeleteType = (type) => {
-    const bookCount = booksData.filter(book => book.subcategory === type).length;
+    const bookCount = books.filter(book => book.subcategory === type).length;
     if (bookCount === 0) {
-      // Gerçek uygulamada burada API çağrısı yapılacak
       console.log('Tür silindi:', type);
     }
   };
 
   const handleAddAuthor = () => {
     if (newAuthor.trim() && !allAuthors.includes(newAuthor.trim())) {
-      // Gerçek uygulamada burada API çağrısı yapılacak
+     
       console.log('Yeni yazar eklendi:', newAuthor.trim());
       setNewAuthor('');
     }
   };
 
   const handleDeleteAuthor = (author) => {
-    const bookCount = booksData.filter(book => book.author === author).length;
+    const bookCount = books.filter(book => book.author === author).length;
     if (bookCount === 0) {
-      // Gerçek uygulamada burada API çağrısı yapılacak
       console.log('Yazar silindi:', author);
     }
   };
 
   const handleAddPublisher = () => {
     if (newPublisher.trim() && !allPublishers.includes(newPublisher.trim())) {
-      // Gerçek uygulamada burada API çağrısı yapılacak
+      
       console.log('Yeni yayınevi eklendi:', newPublisher.trim());
       setNewPublisher('');
     }
   };
 
   const handleDeletePublisher = (publisher) => {
-    const bookCount = booksData.filter(book => book.publisher === publisher).length;
+    const bookCount = books.filter(book => book.publisher === publisher).length;
     if (bookCount === 0) {
-      // Gerçek uygulamada burada API çağrısı yapılacak
       console.log('Yayınevi silindi:', publisher);
     }
   };
