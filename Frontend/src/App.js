@@ -117,7 +117,10 @@ const LoginForm = React.memo(function LoginForm({ onClose, onLoginSuccess, showT
         });
         setLoginError('');
         showToast('Kayıt başarılı!', 'success');
-        setTimeout(() => setMode('login'), 1500);
+        setTimeout(() => {
+          setMode('login');
+          onClose(); // Form'u kapat
+        }, 1500);
       } catch (error) {
         setLoginError('Bir hata oluştu, lütfen tekrar deneyin.');
       }

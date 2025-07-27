@@ -16,39 +16,65 @@ public class AuthService : IAuthService
 
     public async Task<string?> RegisterAsync(RegisterRequest req)
     {
-        using var conn = _context.CreateConnection();
-
-        var existingEmail = await conn.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM users WHERE email = @Email", new { req.Email });
-
-        if (existingEmail > 0)
-            return "Email mevcut!";
-
-        var existingUsername = await conn.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM users WHERE username = @Username", new { req.Username });
-
-        if (existingUsername > 0)
-            return "Kullanıcı adı mevcut !";
-
-        var hash = BCrypt.Net.BCrypt.HashPassword(req.Password);
-
-        var sql = @"INSERT INTO users 
-                (username, email, password_hash, name, surname, phone_number, created_time)
-                VALUES 
-                (@Username, @Email, @PasswordHash, @FirstName, @LastName,@PhoneNumber ,@CreatedAt)";
-
-        await conn.ExecuteAsync(sql, new
+        Console.WriteLine($"[AUTH] Register attempt for username: {req.Username}, email: {req.Email}");
+        
+        try
         {
-            req.Username,
-            req.Email,
-            PasswordHash = hash,
-            req.FirstName,
-            req.LastName,
-            req.PhoneNumber,
-            CreatedAt = DateTime.UtcNow
-        });
+            using var conn = _context.CreateConnection();
+            Console.WriteLine("[AUTH] Database connection created successfully");
 
-        return null; 
+            var existingEmail = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM users WHERE email = @Email", new { req.Email });
+
+            Console.WriteLine($"[AUTH] Existing email check result: {existingEmail}");
+
+            if (existingEmail > 0)
+            {
+                Console.WriteLine("[AUTH] Email already exists");
+                return "Email mevcut!";
+            }
+
+            var existingUsername = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM users WHERE username = @Username", new { req.Username });
+
+            Console.WriteLine($"[AUTH] Existing username check result: {existingUsername}");
+
+            if (existingUsername > 0)
+            {
+                Console.WriteLine("[AUTH] Username already exists");
+                return "Kullanıcı adı mevcut !";
+            }
+
+            var hash = BCrypt.Net.BCrypt.HashPassword(req.Password);
+            Console.WriteLine("[AUTH] Password hashed successfully");
+
+            var sql = @"INSERT INTO users 
+                    (username, email, password_hash, name, surname, phone_number, created_time)
+                    VALUES 
+                    (@Username, @Email, @PasswordHash, @FirstName, @LastName,@PhoneNumber ,@CreatedAt)";
+
+            Console.WriteLine("[AUTH] Executing INSERT query...");
+            
+            var result = await conn.ExecuteAsync(sql, new
+            {
+                req.Username,
+                req.Email,
+                PasswordHash = hash,
+                req.FirstName,
+                req.LastName,
+                req.PhoneNumber,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            Console.WriteLine($"[AUTH] INSERT query executed successfully. Rows affected: {result}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AUTH] Error during registration: {ex.Message}");
+            Console.WriteLine($"[AUTH] Stack trace: {ex.StackTrace}");
+            throw;
+        }
     }
 
 

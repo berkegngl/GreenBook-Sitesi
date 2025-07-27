@@ -18,12 +18,27 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest req)
     {
-        var result = await _auth.RegisterAsync(req);
+        Console.WriteLine($"[CONTROLLER] Register request received for username: {req.Username}");
+        Console.WriteLine($"[CONTROLLER] Request data: Username={req.Username}, Email={req.Email}, FirstName={req.FirstName}, LastName={req.LastName}, PhoneNumber={req.PhoneNumber}");
+        
+        try
+        {
+            var result = await _auth.RegisterAsync(req);
 
-        if (result != null)
-            return BadRequest(result);
+            if (result != null)
+            {
+                Console.WriteLine($"[CONTROLLER] Registration failed: {result}");
+                return BadRequest(new { message = result, success = false });
+            }
 
-        return Ok("User registered");
+            Console.WriteLine("[CONTROLLER] Registration successful");
+            return Ok(new { message = "User registered", success = true });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CONTROLLER] Exception during registration: {ex.Message}");
+            return StatusCode(500, "Internal server error");
+        }
     }
 
 
